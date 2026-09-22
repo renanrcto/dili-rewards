@@ -1,0 +1,34 @@
+// Dili brand tokens — extraídos do protótipo Figma (frame 4193:1164) e dos
+// arquivos de marca em `public/images` (logo.svg / logo-single.svg).
+//
+// Variáveis Sass (resolvidas em build-time) para valores compostos, expostas
+// como custom properties em :root para que os componentes leiam em runtime.
+$font-sans:
+  'Manrope',
+  ui-sans-serif,
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  'Helvetica Neue',
+  Arial,
+  sans-serif;
+
+:root {
+  --color-maroon: #97232c;
+  --color-maroon-soft: rgb(151 35 44 / 12%);
+  --color-navy: #28374a;
+  --color-navy-soft: rgb(40 55 74 / 16%);
+  --color-navy-muted: #5b6573;
+  --color-cream: #f2f0ef;
+  --color-cream-high: #f8f6f5;
+  --color-ink: #2a2a2a;
+
+  --font-sans: #{$font-sans};
+
+  color-scheme: light;
+
+  // respeita a safe-area em telas com notch/home-indicator (PWA full-screen)
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

@@ -18,7 +18,32 @@ export default defineNuxtConfig({
   imports: {
     autoImport: true,
   },
-  css: ['~/assets/css/styles.css'],
+  app: {
+    head: {
+      title: 'Dili Rewards',
+      meta: [
+        { name: 'theme-color', content: '#f2f0ef' },
+        {
+          name: 'viewport',
+          content:
+            'width=device-width, initial-scale=1, viewport-fit=cover',
+        },
+      ],
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        {
+          rel: 'preconnect',
+          href: 'https://fonts.gstatic.com',
+          crossorigin: '',
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap',
+        },
+      ],
+    },
+  },
+  css: ['~/assets/css/styles.scss'],
   vite: {
     plugins: [nxViteTsPaths()],
   },

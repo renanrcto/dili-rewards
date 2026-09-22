@@ -8,7 +8,11 @@
     "dev": "nx run-many -t serve -p @dili/api @dili/web",
     "build:api": "nx build @dili/api",
     "build:web": "nx build @dili/web",
-    "build": "nx run-many -t build -p @dili/api @dili/web"
+    "build": "nx run-many -t build -p @dili/api @dili/web",
+    "migration:run": "nx run @dili/api:migration:run",
+    "migration:revert": "nx run @dili/api:migration:revert",
+    "migration:generate": "nx run @dili/api:migration:generate",
+    "migration:show": "nx run @dili/api:migration:show"
   },
   "private": true,
   "devDependencies": {
@@ -31,13 +35,17 @@
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
+    "@types/bcrypt": "^6.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.0",
+    "@types/passport-jwt": "^4.0.1",
     "@vite-pwa/nuxt": "^1.1.1",
     "h3": "^1.8.2",
     "nuxt": "^4.0.0",
     "nx": "23.2.0",
     "prettier": "^3.8.1",
     "sass": "^1.104.1",
+    "ts-node": "^10.9.2",
     "tslib": "^2.3.0",
     "typescript": "~6.0.3",
     "vue": "^3.5.13",
@@ -53,10 +61,24 @@
   ],
   "dependencies": {
     "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^12.0.2",
+    "@nestjs/passport": "^12.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/typeorm": "^12.0.1",
     "axios": "^1.6.0",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "google-auth-library": "^11.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^4.1.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.23.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "typeorm": "^0.3.31"
   }
 }

@@ -18,6 +18,13 @@ export default defineNuxtConfig({
   imports: {
     autoImport: true,
   },
+  runtimeConfig: {
+    public: {
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
+      googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+      appleClientId: process.env.NUXT_PUBLIC_APPLE_CLIENT_ID || '',
+    },
+  },
   modules: ['@vite-pwa/nuxt'],
   app: {
     head: {
@@ -123,7 +130,14 @@ export default defineNuxtConfig({
       ],
     },
     devOptions: {
-      enabled: true,
+      // Em dev, o vite-pwa registra um SW que precacheia a página atual
+      // (inclusive o "/", que agora é SSR autenticado e por usuário) — isso
+      // fazia o service worker servir o cartão de um usuário antigo para
+      // qualquer sessão depois, ignorando login/logout. O comportamento de
+      // PWA em produção (manifest + workbox acima) não usa esse modo dev e
+      // não é afetado; para testar instalação/offline localmente, rode
+      // `nx build` + preview em vez do dev server.
+      enabled: false,
       type: 'module',
     },
   },

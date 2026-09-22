@@ -1,8 +1,15 @@
 <script setup lang="ts">
-const { user } = useAuthUser();
+definePageMeta({ middleware: 'auth' });
+
+const { account } = useAuth();
+
+// TODO: tier e pontos ainda não vêm de um backend de fidelidade — troque
+// por dados reais assim que esse serviço existir.
+const tier = 'Bronze';
+const points = 0;
 
 const formattedPoints = computed(() =>
-  new Intl.NumberFormat('pt-BR').format(user.value.points),
+  new Intl.NumberFormat('pt-BR').format(points),
 );
 
 function handleScanQrCode() {
@@ -23,7 +30,7 @@ function handleScanQrCode() {
       />
       <p class="home__tier">
         <span>cliente</span>
-        <span>{{ user.tier.toLowerCase() }}</span>
+        <span>{{ tier.toLowerCase() }}</span>
       </p>
     </header>
 
@@ -36,7 +43,7 @@ function handleScanQrCode() {
     </div>
 
     <section class="home__hero" aria-label="Seu cartão de fidelidade Dili">
-      <RewardsCard :name="user.name" class="home__card" />
+      <RewardsCard :name="account?.name ?? ''" class="home__card" />
     </section>
 
     <button type="button" class="home__cta" @click="handleScanQrCode">
@@ -144,15 +151,16 @@ function handleScanQrCode() {
 
   &__cta {
     margin-top: auto;
+    margin: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
+    width: 45%;
     padding: 1rem 1.4rem;
     border-radius: 999px;
     border: 1.5px solid var(--color-navy);
-    background: transparent;
-    color: var(--color-navy);
+    background: var(--color-navy);
+    color: var(--color-cream-high);
     font: inherit;
     font-weight: 700;
     font-size: 1rem;

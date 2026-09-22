@@ -79,6 +79,9 @@ function handleScanQrCode() {
   }
 
   &__tier {
+    font-family: "Montserrat Alternates", sans-serif;
+    font-weight: 500;
+    font-style: normal;
     margin: 0.2rem 0 0;
     display: flex;
     flex-direction: column;
@@ -87,7 +90,11 @@ function handleScanQrCode() {
     line-height: 1.2;
     font-weight: 600;
     font-size: 0.95rem;
-    color: var(--color-navy-muted);
+    background: linear-gradient(to right, #CACACA, #9C9C9C);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent; /* Fallback */
   }
 
 &__greeting {

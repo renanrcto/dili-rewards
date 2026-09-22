@@ -2,7 +2,7 @@
 
 <template>
   <img
-    src="/images/beans-bg.png"
+    src="/images/beans-bg.webp"
     alt=""
     class="coffee-beans"
   />

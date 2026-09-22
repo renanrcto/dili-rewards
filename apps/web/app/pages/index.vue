@@ -64,6 +64,7 @@ function handleScanQrCode() {
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  position: relative;
 
   &__header {
     display: flex;
@@ -168,13 +169,13 @@ function handleScanQrCode() {
     width: 100%;
     height: 100%;
     
-    background-image: url('../../public/images/beans-bg.png');
+    background-image: url('../../public/images/beans-bg.webp');
     background-position: center;
     background-repeat: no-repeat;
-    background-size: 60%;
+    background-size: contain;
     
     opacity: 0.4; 
-    z-index: 0;
+    z-index: -1;
   }
 }
 

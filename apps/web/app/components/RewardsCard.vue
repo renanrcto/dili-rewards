@@ -5,7 +5,7 @@ defineProps<{
 
 // Inclinação de repouso do cartão (combina com o protótipo) + inclinação
 // máxima que o ponteiro/toque pode adicionar em cada eixo.
-const BASE_ROTATION = -9;
+const BASE_ROTATION = 7;
 const MAX_TILT = 15;
 
 const cardEl = ref<HTMLElement | null>(null);
@@ -141,7 +141,7 @@ const cardStyle = computed(() => ({
     border-radius: 1.4rem;
     
     /* Borda sutil e semi-transparente simulando o corte do vidro */
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(40, 55, 74, 0.2);
     
     /* Fundo quase imperceptível. Deixamos de usar branco forte 
        e usamos apenas um traço (8% a 1%) para dar o volume */
@@ -153,8 +153,8 @@ const cardStyle = computed(() => ({
     
     /* A mágica do liquid glass: desfoque forte + saturação alta (180% a 200%).
        A saturação alta compensa a remoção do branco e dá aquele aspecto "vibrante" */
-    backdrop-filter: blur(14px) saturate(180%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
     
     /* Reflexos internos do vidro. Em vez de uma sombra escura, 
        usamos brilhos brancos nas quinas para simular o polimento do material */
@@ -211,18 +211,18 @@ const cardStyle = computed(() => ({
     align-items: center;
     gap: 0.4rem;
     font-weight: 500;
-    font-size: 1.05rem;
+    font-size: 1.25rem;
     color: var(--color-maroon);
   }
 
   &__sparkle {
-    width: 0.85rem;
-    height: 0.85rem;
+    width: 1.25rem;
+    height: 1.25rem;
     color: var(--color-maroon);
   }
 
   &__mark {
-    width: 1.5rem;
+    width: 1.85rem;
     height: auto;
     flex-shrink: 0;
   }
@@ -230,7 +230,7 @@ const cardStyle = computed(() => ({
   &__name {
     align-self: flex-start;
     margin: 0;
-    font-weight: 700;
+    font-weight: 300;
     font-size: 1.05rem;
     color: var(--color-maroon);
   }

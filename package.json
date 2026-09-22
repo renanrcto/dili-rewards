@@ -1,0 +1,60 @@
+{
+  "name": "@dili/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev:api": "nx serve @dili/api",
+    "dev:web": "nx serve @dili/web",
+    "dev": "nx run-many -t serve -p @dili/api @dili/web",
+    "build:api": "nx build @dili/api",
+    "build:web": "nx build @dili/web",
+    "build": "nx run-many -t build -p @dili/api @dili/web"
+  },
+  "private": true,
+  "devDependencies": {
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@nuxt/devtools": "^3.0.0",
+    "@nuxt/kit": "^4.0.0",
+    "@nuxt/schema": "^4.0.0",
+    "@nuxt/ui-templates": "^1.3.1",
+    "@nx/devkit": "23.2.0",
+    "@nx/js": "23.2.0",
+    "@nx/nest": "^23.2.0",
+    "@nx/node": "23.2.0",
+    "@nx/nuxt": "^23.2.0",
+    "@nx/playwright": "23.2.0",
+    "@nx/vite": "23.2.0",
+    "@nx/web": "23.2.0",
+    "@nx/webpack": "23.2.0",
+    "@playwright/test": "^1.37.0",
+    "@swc-node/register": "1.11.1",
+    "@swc/core": "1.15.8",
+    "@swc/helpers": "0.5.18",
+    "@types/node": "^24.0.0",
+    "h3": "^1.8.2",
+    "nuxt": "^4.0.0",
+    "nx": "23.2.0",
+    "prettier": "^3.8.1",
+    "tslib": "^2.3.0",
+    "typescript": "~6.0.3",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.2.8",
+    "webpack": "^5.101.3",
+    "webpack-cli": "^7.0.0",
+    "webpack-dev-server": "^5.2.1"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "axios": "^1.6.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
+  }
+}

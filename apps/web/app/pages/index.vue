@@ -90,19 +90,21 @@ function handleScanQrCode() {
     color: var(--color-navy-muted);
   }
 
-  &__greeting {
+&__greeting {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
 
+    /* Aplica o gradiente e faz o recorte no texto */
+    background: linear-gradient(to right, var(--color-navy), var(--color-maroon));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent; /* Fallback */
+
     &-line {
       margin: 0;
       font-size: 1.05rem;
-      color: var(--color-ink);
-    }
-
-    &-accent {
-      color: var(--color-maroon);
     }
   }
 
@@ -110,6 +112,12 @@ function handleScanQrCode() {
     margin: 0;
     font-size: 1.4rem;
     font-weight: 800;
+  }
+
+  &__points {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
     color: var(--color-navy);
   }
 
@@ -128,6 +136,7 @@ function handleScanQrCode() {
   }
 
   &__cta {
+    margin-top: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;

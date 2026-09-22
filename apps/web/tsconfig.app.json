@@ -1,10 +1,11 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
     "jsx": "preserve",
     "jsxImportSource": "vue",
+    "noEmit": false,
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,

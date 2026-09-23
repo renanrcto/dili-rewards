@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' });
+definePageMeta({ middleware: 'auth', bottomMenu: true });
 
 const { account } = useAuth();
 const { getBalance } = usePoints();
@@ -43,25 +43,12 @@ const formattedPoints = computed(() =>
       <RewardsCard :name="account?.name ?? ''" class="home__card" />
     </section>
 
-    <button type="button" class="home__cta">
-      Histórico de pontos
-      <svg class="home__cta-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M4 12h16M14 6l6 6-6 6"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </button>
   </div>
 </template>
 
 <style scoped lang="scss">
 .home {
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--bottom-menu-space, 0px));
   max-width: 30rem;
   margin: 0 auto;
   padding: 1.75rem 1.5rem 2.5rem;

@@ -186,8 +186,10 @@ const formattedPoints = computed(() =>
   &::before{
     content: "";
     position: absolute;
-    top: -8px;
+    top: -5px;
     left: 0;
+    right: 0;
+    margin: auto;
     width: 95%;
     height: 95%;
     

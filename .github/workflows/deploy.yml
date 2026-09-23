@@ -59,7 +59,7 @@ jobs:
       - name: Copiar arquivos para a VPS
         run: |
           SSH="ssh -i ~/.ssh/id_deploy -p ${{ secrets.VPS_PORT || 22 }}"
-          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
+          TARGET="${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}"
 
           $SSH "$TARGET" "mkdir -p $DEPLOY_PATH"
 
@@ -75,7 +75,7 @@ jobs:
       - name: Instalar dependências e reiniciar PM2
         run: |
           ssh -i ~/.ssh/id_deploy -p ${{ secrets.VPS_PORT || 22 }} \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}" \
             "DEPLOY_PATH=$DEPLOY_PATH bash -s" << 'EOF'
           set -e
           # Carrega nvm, se a VPS usar (shell não interativo não lê o .bashrc)

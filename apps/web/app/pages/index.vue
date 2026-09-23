@@ -2,14 +2,16 @@
 definePageMeta({ middleware: 'auth' });
 
 const { account } = useAuth();
+const { getBalance } = usePoints();
 
-// TODO: tier e pontos ainda não vêm de um backend de fidelidade — troque
-// por dados reais assim que esse serviço existir.
+// TODO: tier ainda não vem de um backend de fidelidade — troque por dado
+// real assim que esse serviço existir.
 const tier = 'Bronze';
-const points = 0;
+
+const { data: balance } = await useAsyncData('points-balance', getBalance);
 
 const formattedPoints = computed(() =>
-  new Intl.NumberFormat('pt-BR').format(points),
+  new Intl.NumberFormat('pt-BR').format(balance.value?.balance ?? 0),
 );
 
 function handleScanQrCode() {

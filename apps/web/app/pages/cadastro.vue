@@ -2,6 +2,7 @@
 const { register } = useAuth();
 const { renderButton: renderGoogleButton } = useGoogleAuth();
 const { signIn: signInWithApple } = useAppleAuth();
+const { redirect, goAfterAuth } = useAuthRedirect();
 
 const name = ref('');
 const email = ref('');
@@ -15,7 +16,7 @@ onMounted(() => {
   if (googleButtonEl.value) {
     renderGoogleButton(
       googleButtonEl.value,
-      () => navigateTo('/'),
+      goAfterAuth,
       (message) => (errorMessage.value = message),
     );
   }
@@ -31,12 +32,13 @@ async function handleSubmit() {
 
   isSubmitting.value = true;
   try {
-    await register({
-      name: name.value,
-      email: email.value,
-      password: password.value,
-    });
-    await navigateTo('/');
+    await goAfterAuth(
+      await register({
+        name: name.value,
+        email: email.value,
+        password: password.value,
+      }),
+    );
   } catch (error) {
     errorMessage.value = extractErrorMessage(
       error,
@@ -50,8 +52,7 @@ async function handleSubmit() {
 async function handleAppleSignIn() {
   errorMessage.value = '';
   try {
-    await signInWithApple();
-    await navigateTo('/');
+    await goAfterAuth(await signInWithApple());
   } catch (error) {
     errorMessage.value = extractErrorMessage(
       error,
@@ -77,7 +78,12 @@ async function handleAppleSignIn() {
       </p>
     </header>
 
-    <form class="auth__form" novalidate @submit.prevent="handleSubmit">
+    <form
+      class="auth__form"
+      method="post"
+      novalidate
+      @submit.prevent="handleSubmit"
+    >
       <label class="auth__field">
         <span class="auth__label">Nome</span>
         <input
@@ -163,7 +169,12 @@ async function handleAppleSignIn() {
 
     <p class="auth__footer">
       Já tem conta?
-      <NuxtLink to="/login" class="auth__link">Entrar</NuxtLink>
+      <NuxtLink
+        :to="{ path: '/login', query: redirect ? { redirect } : {} }"
+        class="auth__link"
+      >
+        Entrar
+      </NuxtLink>
     </p>
   </div>
 </template>

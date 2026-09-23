@@ -1,0 +1,18 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConversionRatesController } from './conversion-rates.controller';
+import { ConversionRatesService } from './conversion-rates.service';
+import { PointsConversionRate } from './entities/points-conversion-rate.entity';
+import { RescuePoint } from './entities/rescue-point.entity';
+import { UserPoints } from './entities/user-points.entity';
+import { PointsController } from './points.controller';
+import { PointsService } from './points.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([UserPoints, PointsConversionRate, RescuePoint]),
+  ],
+  controllers: [PointsController, ConversionRatesController],
+  providers: [PointsService, ConversionRatesService],
+})
+export class PointsModule {}

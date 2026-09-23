@@ -186,10 +186,9 @@ const formattedPoints = computed(() =>
   &::before{
     content: "";
     position: absolute;
-    top: -50px;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: -20px;
+    width: 90%;
+    height: 90%;
     
     background-image: url('../../public/images/beans-bg3.webp');
     background-position: center;

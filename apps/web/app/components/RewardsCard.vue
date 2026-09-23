@@ -1,7 +1,15 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   name: string;
 }>();
+
+// Acima disso o nome não cabe numa linha do cartão; mostramos só
+// primeiro e último nome.
+const MAX_NAME_LENGTH = 24;
+
+const displayName = computed(() =>
+  formatDisplayName(props.name, MAX_NAME_LENGTH),
+);
 
 // Inclinação de repouso do cartão (combina com o protótipo) + inclinação
 // máxima que o ponteiro/toque pode adicionar em cada eixo.
@@ -83,7 +91,7 @@ const cardStyle = computed(() => ({
         />
       </div>
 
-      <p class="rewards-card__name">{{ name }}</p>
+      <p class="rewards-card__name">{{ displayName }}</p>
     </div>
   </div>
 </template>

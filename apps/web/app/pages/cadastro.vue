@@ -26,6 +26,11 @@ onMounted(() => {
 async function handleSubmit() {
   errorMessage.value = '';
 
+  if (!isFullName(name.value)) {
+    errorMessage.value = 'Informe seu nome e sobrenome.';
+    return;
+  }
+
   if (password.value !== confirmPassword.value) {
     errorMessage.value = 'As senhas não coincidem.';
     return;
@@ -35,7 +40,7 @@ async function handleSubmit() {
   try {
     await goAfterAuth(
       await register({
-        name: name.value,
+        name: normalizeName(name.value),
         email: email.value,
         password: password.value,
       }),

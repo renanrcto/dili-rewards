@@ -54,7 +54,7 @@ const formattedPoints = computed(() =>
   padding: 1.75rem 1.5rem 2.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 2rem;
   position: relative;
 
   &__header {

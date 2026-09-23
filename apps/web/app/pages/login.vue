@@ -2,6 +2,7 @@
 const { login } = useAuth();
 const { renderButton: renderGoogleButton } = useGoogleAuth();
 const { signIn: signInWithApple } = useAppleAuth();
+const { redirect, goAfterAuth } = useAuthRedirect();
 
 const email = ref('');
 const password = ref('');
@@ -13,7 +14,7 @@ onMounted(() => {
   if (googleButtonEl.value) {
     renderGoogleButton(
       googleButtonEl.value,
-      () => navigateTo('/'),
+      goAfterAuth,
       (message) => (errorMessage.value = message),
     );
   }
@@ -23,8 +24,9 @@ async function handleSubmit() {
   errorMessage.value = '';
   isSubmitting.value = true;
   try {
-    await login({ email: email.value, password: password.value });
-    await navigateTo('/');
+    await goAfterAuth(
+      await login({ email: email.value, password: password.value }),
+    );
   } catch (error) {
     errorMessage.value = extractErrorMessage(
       error,
@@ -38,8 +40,7 @@ async function handleSubmit() {
 async function handleAppleSignIn() {
   errorMessage.value = '';
   try {
-    await signInWithApple();
-    await navigateTo('/');
+    await goAfterAuth(await signInWithApple());
   } catch (error) {
     errorMessage.value = extractErrorMessage(
       error,
@@ -62,7 +63,12 @@ async function handleAppleSignIn() {
       <h1 class="auth__title">Bem-vindo de volta</h1>
     </header>
 
-    <form class="auth__form" novalidate @submit.prevent="handleSubmit">
+    <form
+      class="auth__form"
+      method="post"
+      novalidate
+      @submit.prevent="handleSubmit"
+    >
       <label class="auth__field">
         <span class="auth__label">E-mail</span>
         <input
@@ -120,7 +126,12 @@ async function handleAppleSignIn() {
 
     <p class="auth__footer">
       Ainda não tem conta?
-      <NuxtLink to="/cadastro" class="auth__link">Criar conta</NuxtLink>
+      <NuxtLink
+        :to="{ path: '/cadastro', query: redirect ? { redirect } : {} }"
+        class="auth__link"
+      >
+        Criar conta
+      </NuxtLink>
     </p>
   </div>
 </template>

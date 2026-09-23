@@ -9,7 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { OAuth2Client } from 'google-auth-library';
 import * as jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { AuthProvider, User } from '../users/entities/user.entity';
+import { AuthProvider, User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -25,6 +25,7 @@ export interface PublicUser {
   email: string;
   avatarUrl: string | null;
   provider: AuthProvider;
+  role: UserRole;
 }
 
 export interface AuthResult {
@@ -113,7 +114,8 @@ export class AuthService {
   async loginWithApple(idToken: string): Promise<AuthResult> {
     const audience = this.configService.get<string>('APPLE_CLIENT_ID');
     const decoded = jwt.decode(idToken, { complete: true });
-    const kid = decoded && typeof decoded === 'object' ? decoded.header.kid : undefined;
+    const kid =
+      decoded && typeof decoded === 'object' ? decoded.header.kid : undefined;
     if (!kid) {
       throw new UnauthorizedException('Token da Apple inválido.');
     }
@@ -206,6 +208,7 @@ export class AuthService {
       email: user.email,
       avatarUrl: user.avatarUrl,
       provider: user.provider,
+      role: user.role,
     };
   }
 }

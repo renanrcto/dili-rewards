@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import { PointsConversionRate } from '../app/points/entities/points-conversion-rate.entity';
+import { RescuePoint } from '../app/points/entities/rescue-point.entity';
+import { UserPoints } from '../app/points/entities/user-points.entity';
 import { User } from '../app/users/entities/user.entity';
 
 /**
@@ -18,7 +21,7 @@ export default new DataSource({
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'dili_rewards',
-  entities: [User],
+  entities: [User, UserPoints, PointsConversionRate, RescuePoint],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,
 });

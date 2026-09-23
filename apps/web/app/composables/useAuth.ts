@@ -1,4 +1,5 @@
 export type AuthAccountProvider = 'local' | 'google' | 'apple';
+export type AuthAccountRole = 'customer' | 'admin';
 
 export interface AuthAccount {
   id: string;
@@ -6,6 +7,7 @@ export interface AuthAccount {
   email: string;
   avatarUrl: string | null;
   provider: AuthAccountProvider;
+  role: AuthAccountRole;
 }
 
 interface AuthApiResponse {

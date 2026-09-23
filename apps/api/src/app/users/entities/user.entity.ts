@@ -13,6 +13,11 @@ export enum AuthProvider {
   APPLE = 'apple',
 }
 
+export enum UserRole {
+  CUSTOMER = 'customer',
+  ADMIN = 'admin',
+}
+
 @Entity('users')
 @Index('UQ_users_provider_provider_id', ['provider', 'providerId'], {
   unique: true,
@@ -42,6 +47,13 @@ export class User {
     default: AuthProvider.LOCAL,
   })
   provider!: AuthProvider;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.CUSTOMER,
+  })
+  role!: UserRole;
 
   @Column({
     name: 'provider_id',

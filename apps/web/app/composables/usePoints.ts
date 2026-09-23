@@ -27,6 +27,17 @@ export interface PointsHistoryItem {
   expiresAt: string;
 }
 
+export type TierLevel = 'standard' | 'gold' | 'platinum';
+
+export interface UserTierStatus {
+  tier: TierLevel;
+  source: 'activity' | 'manual' | null;
+  lockedUntil: string | null;
+  visits: number;
+  points: number;
+  since: string;
+}
+
 export interface PointsHistoryPage {
   items: PointsHistoryItem[];
   page: number;
@@ -48,6 +59,13 @@ export function usePoints() {
       `${config.public.apiBaseUrl}/points/balance`,
       { headers: authHeaders() },
     );
+  }
+
+  /** Nível do usuário logado (standard/gold/platinum). */
+  function getTier(): Promise<UserTierStatus> {
+    return $fetch<UserTierStatus>(`${config.public.apiBaseUrl}/points/tier`, {
+      headers: authHeaders(),
+    });
   }
 
   /** Créditos do usuário logado, mais recentes primeiro. */
@@ -76,5 +94,5 @@ export function usePoints() {
     });
   }
 
-  return { getBalance, getHistory, createRescue, redeem };
+  return { getBalance, getTier, getHistory, createRescue, redeem };
 }

@@ -12,6 +12,7 @@ import { CreateRescueDto } from './dto/create-rescue.dto';
 import { ListPointsQueryDto } from './dto/list-points-query.dto';
 import { RescuePoint } from './entities/rescue-point.entity';
 import { UserPoints } from './entities/user-points.entity';
+import { TiersService } from './tiers.service';
 
 export type PointsStatus = 'available' | 'redeemed' | 'expired';
 
@@ -52,6 +53,7 @@ export class PointsService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly ratesService: ConversionRatesService,
+    private readonly tiersService: TiersService,
   ) {}
 
   async createRescue(
@@ -108,6 +110,7 @@ export class PointsService {
           points,
         }),
       );
+      await this.tiersService.recordCredit(manager, userId, points);
       return saved.id;
     });
     // created_at/expires_at vêm dos DEFAULTs do banco; o save do TypeORM

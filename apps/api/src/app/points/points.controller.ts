@@ -14,11 +14,16 @@ import type {
   PointsHistoryItem,
   RescueCode,
 } from './points.service';
+import { TiersService } from './tiers.service';
+import type { UserTierStatus } from './tiers.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('points')
 export class PointsController {
-  constructor(private readonly pointsService: PointsService) {}
+  constructor(
+    private readonly pointsService: PointsService,
+    private readonly tiersService: TiersService,
+  ) {}
 
   // Admin no caixa gera o código que vai no QR Code. O admin é sempre
   // quem está autenticado — nunca aceito pelo body — para que o registro
@@ -46,6 +51,14 @@ export class PointsController {
   @Get('balance')
   balance(@CurrentUser() user: User): Promise<PointsBalance> {
     return this.pointsService.getBalance(user.id);
+  }
+
+  // Nível do usuário (standard/gold/platinum): o maior entre a garantia
+  // gravada na subida de nível (ou forçada) e a atividade dos últimos
+  // 2 meses.
+  @Get('tier')
+  tier(@CurrentUser() user: User): Promise<UserTierStatus> {
+    return this.tiersService.getStatus(user.id);
   }
 
   @Get('history')

@@ -26,6 +26,7 @@ export interface PublicUser {
   avatarUrl: string | null;
   provider: AuthProvider;
   role: UserRole;
+  createdAt: Date;
 }
 
 export interface AuthResult {
@@ -209,6 +210,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       provider: user.provider,
       role: user.role,
+      createdAt: user.createdAt,
     };
   }
 }

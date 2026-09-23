@@ -8,6 +8,8 @@ export interface AuthAccount {
   avatarUrl: string | null;
   provider: AuthAccountProvider;
   role: AuthAccountRole;
+  // ISO 8601 — datas chegam como string no JSON.
+  createdAt: string;
 }
 
 interface AuthApiResponse {
@@ -73,6 +75,9 @@ export function useAuth() {
   function logout() {
     token.value = null;
     account.value = null;
+    // Descarta dados em cache (ex.: saldo de pontos) para que o próximo
+    // usuário a entrar não veja os dados do anterior.
+    clearNuxtData();
   }
 
   /**

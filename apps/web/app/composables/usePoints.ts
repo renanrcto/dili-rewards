@@ -15,6 +15,26 @@ export interface CreditedPoints {
   expiresAt: string;
 }
 
+export type PointsStatus = 'available' | 'redeemed' | 'expired';
+
+export interface PointsHistoryItem {
+  id: string;
+  purchaseAmount: number;
+  points: number;
+  status: PointsStatus;
+  redeemed: boolean;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface PointsHistoryPage {
+  items: PointsHistoryItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export function usePoints() {
   const config = useRuntimeConfig();
   const { token } = useAuth();
@@ -27,6 +47,14 @@ export function usePoints() {
     return $fetch<PointsBalance>(
       `${config.public.apiBaseUrl}/points/balance`,
       { headers: authHeaders() },
+    );
+  }
+
+  /** Créditos do usuário logado, mais recentes primeiro. */
+  function getHistory(page = 1, limit = 20): Promise<PointsHistoryPage> {
+    return $fetch<PointsHistoryPage>(
+      `${config.public.apiBaseUrl}/points/history`,
+      { headers: authHeaders(), query: { page, limit } },
     );
   }
 
@@ -48,5 +76,5 @@ export function usePoints() {
     });
   }
 
-  return { getBalance, createRescue, redeem };
+  return { getBalance, getHistory, createRescue, redeem };
 }

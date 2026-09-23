@@ -13,11 +13,6 @@ const { data: balance } = await useAsyncData('points-balance', getBalance);
 const formattedPoints = computed(() =>
   new Intl.NumberFormat('pt-BR').format(balance.value?.balance ?? 0),
 );
-
-function handleScanQrCode() {
-  // TODO: abrir o leitor de QR Code assim que o fluxo de pontuação/resgate
-  // via QR estiver implementado.
-}
 </script>
 
 <template>
@@ -47,20 +42,6 @@ function handleScanQrCode() {
     <section class="home__hero" aria-label="Seu cartão de fidelidade Dili">
       <RewardsCard :name="account?.name ?? ''" class="home__card" />
     </section>
-
-    <button type="button" class="home__cta" @click="handleScanQrCode">
-      Ler QR Code
-      <svg class="home__cta-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M4 12h16M14 6l6 6-6 6"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </button>
   </div>
 </template>
 
@@ -149,42 +130,6 @@ function handleScanQrCode() {
   &__card {
     position: relative;
     z-index: 1;
-  }
-
-  &__cta {
-    margin-top: auto;
-    margin: auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 45%;
-    padding: 1rem 1.4rem;
-    border-radius: 999px;
-    border: 1.5px solid var(--color-navy);
-    background: var(--color-navy);
-    color: var(--color-cream-high);
-    font: inherit;
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    transition:
-      background-color 0.2s ease,
-      color 0.2s ease;
-
-    &:hover {
-      background: var(--color-navy);
-      color: var(--color-cream-high);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-maroon);
-      outline-offset: 3px;
-    }
-
-    &-icon {
-      width: 1.4rem;
-      height: 1.4rem;
-    }
   }
 
   &::before{

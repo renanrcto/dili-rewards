@@ -140,7 +140,7 @@ const formattedPoints = computed(() =>
     width: 100%;
     height: 100%;
     
-    background-image: url('../../public/images/beans-bg.webp');
+    background-image: url('../../public/images/beans-bg3.webp');
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;

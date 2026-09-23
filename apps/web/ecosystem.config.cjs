@@ -15,7 +15,7 @@ module.exports = {
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'development',
-      PORT: 3000 // Default environment variables
+      PORT: 4200 // Default environment variables
     },
     env_production: {
       NODE_ENV: 'production',

@@ -6,7 +6,7 @@ const { getBalance } = usePoints();
 
 // TODO: tier ainda não vem de um backend de fidelidade — troque por dado
 // real assim que esse serviço existir.
-const tier = 'Bronze';
+const tier = 'platinum';
 
 const { data: balance } = await useAsyncData('points-balance', getBalance);
 
@@ -42,6 +42,20 @@ const formattedPoints = computed(() =>
     <section class="home__hero" aria-label="Seu cartão de fidelidade Dili">
       <RewardsCard :name="account?.name ?? ''" class="home__card" />
     </section>
+
+    <button type="button" class="home__cta">
+      Histórico de pontos
+      <svg class="home__cta-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M4 12h16M14 6l6 6-6 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -132,6 +146,43 @@ const formattedPoints = computed(() =>
     z-index: 1;
   }
 
+
+  &__cta {
+    margin-top: auto;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 60%;
+    padding: 1rem 1.4rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-navy);
+    background: var(--color-navy);
+    color: var(--color-cream-high);
+    font: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+
+    &:hover {
+      background: var(--color-navy);
+      color: var(--color-cream-high);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-maroon);
+      outline-offset: 3px;
+    }
+
+    &-icon {
+      width: 1.4rem;
+      height: 1.4rem;
+    }
+  }
+
   &::before{
     content: "";
     position: absolute;
@@ -140,7 +191,7 @@ const formattedPoints = computed(() =>
     width: 100%;
     height: 100%;
     
-    background-image: url('../../public/images/beans-bg.webp');
+    background-image: url('../../public/images/beans-bg3.webp');
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;

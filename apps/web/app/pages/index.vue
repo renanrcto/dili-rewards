@@ -54,7 +54,7 @@ const formattedPoints = computed(() =>
   padding: 1.75rem 1.5rem 2.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 2.75rem;
   position: relative;
 
   &__header {
@@ -172,7 +172,7 @@ const formattedPoints = computed(() =>
   &::before{
     content: "";
     position: absolute;
-    top: 40px;
+    top: 65px;
     left: 0;
     right: 0;
     margin: auto;

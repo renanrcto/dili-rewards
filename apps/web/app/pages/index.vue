@@ -75,7 +75,7 @@ const formattedPoints = computed(() =>
     font-family: "Montserrat Alternates", sans-serif;
     font-weight: 500;
     font-style: normal;
-    margin: 0.2rem 0 0;
+    margin: 0.5rem 0 0;
     display: flex;
     flex-direction: column;
     align-items: flex-end;

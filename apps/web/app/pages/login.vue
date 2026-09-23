@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const { login } = useAuth();
 const { renderButton: renderGoogleButton } = useGoogleAuth();
-const { signIn: signInWithApple } = useAppleAuth();
+// Login com Apple desativado — por enquanto só login local e Google.
+// const { signIn: signInWithApple } = useAppleAuth();
 const { redirect, goAfterAuth } = useAuthRedirect();
 
 const email = ref('');
@@ -37,17 +38,17 @@ async function handleSubmit() {
   }
 }
 
-async function handleAppleSignIn() {
-  errorMessage.value = '';
-  try {
-    await goAfterAuth(await signInWithApple());
-  } catch (error) {
-    errorMessage.value = extractErrorMessage(
-      error,
-      'Não foi possível entrar com a Apple.',
-    );
-  }
-}
+// async function handleAppleSignIn() {
+//   errorMessage.value = '';
+//   try {
+//     await goAfterAuth(await signInWithApple());
+//   } catch (error) {
+//     errorMessage.value = extractErrorMessage(
+//       error,
+//       'Não foi possível entrar com a Apple.',
+//     );
+//   }
+// }
 </script>
 
 <template>
@@ -109,6 +110,7 @@ async function handleAppleSignIn() {
 
     <div class="auth__social">
       <div ref="googleButtonEl" class="auth__google-slot" />
+      <!-- Login com Apple desativado — por enquanto só login local e Google.
       <button
         type="button"
         class="auth__apple-button"
@@ -122,6 +124,7 @@ async function handleAppleSignIn() {
         </svg>
         Continuar com a Apple
       </button>
+      -->
     </div>
 
     <p class="auth__footer">
@@ -271,6 +274,8 @@ async function handleAppleSignIn() {
     min-height: 2.75rem;
   }
 
+  // Login com Apple desativado — por enquanto só login local e Google.
+  /*
   &__apple-button {
     display: flex;
     align-items: center;
@@ -296,6 +301,7 @@ async function handleAppleSignIn() {
     width: 1.15rem;
     height: 1.15rem;
   }
+  */
 
   &__footer {
     text-align: center;

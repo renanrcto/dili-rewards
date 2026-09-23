@@ -1,8 +1,10 @@
 {
-  "name": "@dili/api",
+  "name": "@dilirewards/api",
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "start": "nx serve @dilirewards/api",
+    "build:app": "nx build @dilirewards/api",
     "migration:run": "TS_NODE_PROJECT=tsconfig.app.json typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
     "migration:revert": "TS_NODE_PROJECT=tsconfig.app.json typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "migration:generate": "TS_NODE_PROJECT=tsconfig.app.json typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
@@ -52,15 +54,15 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@dili/api:build",
+          "buildTarget": "@dilirewards/api:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@dili/api:build:development"
+            "buildTarget": "@dilirewards/api:build:development"
           },
           "production": {
-            "buildTarget": "@dili/api:build:production"
+            "buildTarget": "@dilirewards/api:build:production"
           }
         }
       }

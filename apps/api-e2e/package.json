@@ -4,7 +4,7 @@
   "private": true,
   "nx": {
     "implicitDependencies": [
-      "@dili/api"
+      "@dilirewards/api"
     ],
     "targets": {
       "e2e": {
@@ -17,8 +17,8 @@
           "passWithNoTests": true
         },
         "dependsOn": [
-          "@dili/api:build",
-          "@dili/api:serve"
+          "@dilirewards/api:build",
+          "@dilirewards/api:serve"
         ]
       }
     }

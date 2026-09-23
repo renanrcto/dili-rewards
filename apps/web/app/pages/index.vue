@@ -2,13 +2,15 @@
 definePageMeta({ middleware: 'auth', bottomMenu: true });
 
 const { account } = useAuth();
-const { getBalance } = usePoints();
+const { getBalance, getTier } = usePoints();
 
-// TODO: tier ainda não vem de um backend de fidelidade — troque por dado
-// real assim que esse serviço existir.
-const tier = 'platinum';
+const [{ data: balance }, { data: tierStatus }] = await Promise.all([
+  useAsyncData('points-balance', getBalance),
+  useAsyncData('points-tier', getTier),
+]);
 
-const { data: balance } = await useAsyncData('points-balance', getBalance);
+// Se o nível não carregar, mostra standard em vez de esconder o selo.
+const tier = computed(() => tierStatus.value?.tier ?? 'standard');
 
 const formattedPoints = computed(() =>
   new Intl.NumberFormat('pt-BR').format(balance.value?.balance ?? 0),
@@ -25,9 +27,9 @@ const formattedPoints = computed(() =>
         width="128"
         height="95"
       />
-      <p class="home__tier">
+      <p class="home__tier" :class="`home__tier--${tier}`">
         <span>cliente</span>
-        <span>{{ tier.toLowerCase() }}</span>
+        <span>{{ tier }}</span>
       </p>
     </header>
 
@@ -73,7 +75,7 @@ const formattedPoints = computed(() =>
     font-family: "Montserrat Alternates", sans-serif;
     font-weight: 500;
     font-style: normal;
-    margin: 0.2rem 0 0;
+    margin: 0.5rem 0 0;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -81,11 +83,23 @@ const formattedPoints = computed(() =>
     line-height: 1.2;
     font-weight: 600;
     font-size: 0.95rem;
-    background: linear-gradient(to right, #CACACA, #9C9C9C);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent; /* Fallback */
+    color: var(--color-navy);
+
+    &--gold,
+    &--platinum {
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent; /* Fallback */
+    }
+
+    &--gold {
+      background-image: linear-gradient(to right, #e3b94d, #a8741a);
+    }
+
+    &--platinum {
+      background-image: linear-gradient(to right, #CACACA, #9C9C9C);
+    }
   }
 
 &__greeting {

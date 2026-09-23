@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { PointsConversionRate } from '../app/points/entities/points-conversion-rate.entity';
 import { RescuePoint } from '../app/points/entities/rescue-point.entity';
 import { UserPoints } from '../app/points/entities/user-points.entity';
+import { UserTier } from '../app/points/entities/user-tier.entity';
 import { User } from '../app/users/entities/user.entity';
 
 export function buildDatabaseConfig(
@@ -15,7 +16,7 @@ export function buildDatabaseConfig(
     username: config.get<string>('DB_USERNAME', 'postgres'),
     password: config.get<string>('DB_PASSWORD', 'postgres'),
     database: config.get<string>('DB_NAME', 'dili_rewards'),
-    entities: [User, UserPoints, PointsConversionRate, RescuePoint],
+    entities: [User, UserPoints, PointsConversionRate, RescuePoint, UserTier],
     // Schema é gerenciado só pelas migrations (src/database/migrations) —
     // nunca pelo synchronize, mesmo em desenvolvimento.
     synchronize: false,

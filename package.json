@@ -3,16 +3,16 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev:api": "nx serve @dili/api",
-    "dev:web": "nx serve @dili/web",
-    "dev": "nx run-many -t serve -p @dili/api @dili/web",
-    "build:api": "nx build @dili/api",
-    "build:web": "nx build @dili/web",
-    "build": "nx run-many -t build -p @dili/api @dili/web",
-    "migration:run": "nx run @dili/api:migration:run",
-    "migration:revert": "nx run @dili/api:migration:revert",
-    "migration:generate": "nx run @dili/api:migration:generate",
-    "migration:show": "nx run @dili/api:migration:show"
+    "dev:api": "nx serve @dilirewards/api",
+    "dev:web": "nx serve @dilirewards/web",
+    "dev": "nx run-many -t serve -p @dilirewards/api @dilirewards/web",
+    "build:api": "nx build @dilirewards/api",
+    "build:web": "nx build @dilirewards/web",
+    "build": "nx run-many -t build -p @dilirewards/api @dilirewards/web",
+    "migration:run": "nx run @dilirewards/api:migration:run",
+    "migration:revert": "nx run @dilirewards/api:migration:revert",
+    "migration:generate": "nx run @dilirewards/api:migration:generate",
+    "migration:show": "nx run @dilirewards/api:migration:show"
   },
   "private": true,
   "devDependencies": {

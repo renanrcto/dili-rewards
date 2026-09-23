@@ -146,14 +146,13 @@ const formattedPoints = computed(() =>
     z-index: 1;
   }
 
-
   &__cta {
+    margin: 0 auto;
     margin-top: auto;
-    margin: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 60%;
+    width: 70%;
     padding: 1rem 1.4rem;
     border-radius: 999px;
     border: 1.5px solid var(--color-navy);

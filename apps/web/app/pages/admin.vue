@@ -12,7 +12,6 @@ interface ActiveRescue {
 const { createRescue } = usePoints();
 const requestUrl = useRequestURL();
 
-const amountInput = ref('');
 const isSubmitting = ref(false);
 const errorMessage = ref('');
 const rescue = ref<ActiveRescue | null>(null);
@@ -24,16 +23,32 @@ const currency = new Intl.NumberFormat('pt-BR', {
   currency: 'BRL',
 });
 
-// Aceita "25,50", "25.50", "1.234,56" e "R$ 25,50". Até 2 casas decimais,
-// igual à validação da API.
-function parseAmount(value: string): number | null {
-  let normalized = value.replace(/[R$\s]/g, '');
-  if (normalized.includes(',')) {
-    normalized = normalized.replace(/\./g, '').replace(',', '.');
-  }
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
-  const amount = Number(normalized);
-  return amount > 0 ? amount : null;
+// Valor em centavos: cada dígito digitado entra pela direita (estilo
+// maquininha), então "2", "5", "9", "0" vira 0,02 → 0,25 → 2,59 → 25,90.
+// Trabalhar com inteiro evita erro de ponto flutuante até o envio.
+const MAX_AMOUNT_DIGITS = 9; // até R$ 9.999.999,99
+
+const amountCents = ref(0);
+
+const decimal = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const amountDisplay = computed(() =>
+  amountCents.value ? decimal.format(amountCents.value / 100) : '',
+);
+
+function handleAmountInput(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const digits = input.value.replace(/\D/g, '').slice(0, MAX_AMOUNT_DIGITS);
+  amountCents.value = Number(digits) || 0;
+
+  // Reescreve o campo na hora (o Vue não re-renderiza se o valor formatado
+  // não mudou, ex.: ao digitar uma letra) e mantém o cursor no fim, já que
+  // o preenchimento é sempre da direita para a esquerda.
+  input.value = amountDisplay.value;
+  input.setSelectionRange(input.value.length, input.value.length);
 }
 
 const secondsLeft = computed(() =>
@@ -95,18 +110,17 @@ async function generate(amount: number) {
 }
 
 function handleSubmit() {
-  const amount = parseAmount(amountInput.value);
-  if (amount === null) {
-    errorMessage.value = 'Informe um valor válido, ex.: 25,90.';
+  if (amountCents.value <= 0) {
+    errorMessage.value = 'Informe o valor da compra.';
     return;
   }
-  generate(amount);
+  generate(amountCents.value / 100);
 }
 
 function handleNewSale() {
   stopTimer();
   rescue.value = null;
-  amountInput.value = '';
+  amountCents.value = 0;
   errorMessage.value = '';
 }
 
@@ -145,14 +159,15 @@ onBeforeUnmount(stopTimer);
         <span class="admin__amount-input">
           <span class="admin__currency" aria-hidden="true">R$</span>
           <input
-            v-model="amountInput"
+            :value="amountDisplay"
             type="text"
-            inputmode="decimal"
+            inputmode="numeric"
             name="purchaseAmount"
             autocomplete="off"
             required
             placeholder="0,00"
             class="admin__input"
+            @input="handleAmountInput"
           />
         </span>
       </label>

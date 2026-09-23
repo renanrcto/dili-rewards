@@ -2,7 +2,7 @@ module.exports = {
   apps : [{
     name: 'dilirewards-api',
     script: './dist/main.js',
-    watch: '.',
+    watch: false,
     env: {
       NODE_ENV: "development",
       PORT: 3000 // Default environment variables

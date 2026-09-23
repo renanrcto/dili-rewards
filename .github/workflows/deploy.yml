@@ -1,0 +1,99 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Evita dois deploys rodando ao mesmo tempo na VPS
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Diretório base na VPS. A estrutura final fica:
+  #   $DEPLOY_PATH/api/ecosystem.config.js + dist/ (main.js, package.json, package-lock.json)
+  #   $DEPLOY_PATH/web/ecosystem.config.cjs + .output/
+  DEPLOY_PATH: /var/www/dili-rewards
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      # API: build de produção + package.json/package-lock.json enxutos em apps/api/dist
+      - name: Build API
+        run: npx nx run @dilirewards/api:prune --configuration=production
+
+      # Web: Nuxt gera apps/web/.output já autocontido (com os node_modules do servidor)
+      - name: Build Web
+        run: npx nx build @dilirewards/web
+
+      - name: Montar pacote de deploy
+        run: |
+          mkdir -p deploy/api deploy/web
+          cp -r apps/api/dist deploy/api/dist
+          cp apps/api/ecosystem.config.js deploy/api/
+          cp -r apps/web/.output deploy/web/.output
+          cp apps/web/ecosystem.config.cjs deploy/web/
+
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copiar arquivos para a VPS
+        run: |
+          SSH="ssh -i ~/.ssh/id_deploy -p ${{ secrets.VPS_PORT || 22 }}"
+          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
+
+          $SSH "$TARGET" "mkdir -p $DEPLOY_PATH"
+
+          # --delete remove arquivos antigos do build; os excludes protegem o que
+          # só existe na VPS (.env e node_modules instalados lá)
+          rsync -az --delete \
+            --exclude '/api/.env' \
+            --exclude '/web/.env' \
+            --exclude '/api/dist/node_modules/' \
+            -e "$SSH" \
+            deploy/ "$TARGET:$DEPLOY_PATH/"
+
+      - name: Instalar dependências e reiniciar PM2
+        run: |
+          ssh -i ~/.ssh/id_deploy -p ${{ secrets.VPS_PORT || 22 }} \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "DEPLOY_PATH=$DEPLOY_PATH bash -s" << 'EOF'
+          set -e
+          # Carrega nvm, se a VPS usar (shell não interativo não lê o .bashrc)
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+          cd "$DEPLOY_PATH/api/dist"
+          npm ci --omit=dev
+
+          cd "$DEPLOY_PATH/api"
+          pm2 startOrReload ecosystem.config.js --env production --update-env
+
+          cd "$DEPLOY_PATH/web"
+          pm2 startOrReload ecosystem.config.cjs --env production --update-env
+
+          pm2 save
+          EOF
+
+      - name: Limpar chave SSH
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

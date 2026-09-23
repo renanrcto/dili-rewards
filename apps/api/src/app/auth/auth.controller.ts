@@ -37,11 +37,12 @@ export class AuthController {
     return this.authService.loginWithGoogle(dto.idToken);
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Post('apple')
-  loginWithApple(@Body() dto: SocialLoginDto): Promise<AuthResult> {
-    return this.authService.loginWithApple(dto.idToken);
-  }
+  // Login com Apple desativado — por enquanto só login local e Google.
+  // @HttpCode(HttpStatus.OK)
+  // @Post('apple')
+  // loginWithApple(@Body() dto: SocialLoginDto): Promise<AuthResult> {
+  //   return this.authService.loginWithApple(dto.idToken);
+  // }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')

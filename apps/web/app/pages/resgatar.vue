@@ -32,8 +32,8 @@ onMounted(async () => {
 
   try {
     const credited = await redeem(code);
-    // Força a home a buscar o saldo atualizado.
-    clearNuxtData('points-balance');
+    // Força a home e o histórico a buscarem os dados atualizados.
+    clearNuxtData(['points-balance', 'points-history']);
     state.value = { status: 'success', points: credited.points };
   } catch (error) {
     state.value = {

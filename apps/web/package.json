@@ -1,5 +1,23 @@
 {
   "name": "@dilirewards/web",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "nx": {
+    "targets": {
+      "typecheck": {
+        "executor": "nx:run-commands",
+        "cache": true,
+        "parallelism": false,
+        "inputs": [
+          "default",
+          "^default"
+        ],
+        "outputs": [],
+        "options": {
+          "cwd": "apps/web",
+          "command": "nuxt typecheck"
+        }
+      }
+    }
+  }
 }

@@ -27,4 +27,7 @@ jobs:
       - run: npm ci
 
       - run: npx nx format:check --base="remotes/origin/main"
-      - run: npx nx run-many -t lint test build typecheck e2e
+      # Os projetos de e2e ainda são o exemplo gerado pelo Nx (sem testes
+      # reais, sem banco nem navegadores no CI), então ficam de fora até
+      # ganharem testes de verdade.
+      - run: npx nx run-many -t lint test build typecheck --exclude=@dili/api-e2e,@dili/web-e2e

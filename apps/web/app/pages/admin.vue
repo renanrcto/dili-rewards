@@ -1,336 +1,478 @@
 <script setup lang="ts">
-import { renderSVG } from 'uqr';
+import type { ConversionRate } from '~/composables/useAdmin';
 
-definePageMeta({ middleware: ['auth', 'admin'] });
+definePageMeta({ middleware: ['auth', 'super-admin'] });
 
-interface ActiveRescue {
-  code: string;
-  amount: number;
-  expiresAt: number;
-}
+// Mesmo fuso usado pela API para definir "o dia" do painel.
+const STORE_TIME_ZONE = 'America/Sao_Paulo';
+const MAX_DURATION_HOURS = 720;
 
-const { createRescue } = usePoints();
-const requestUrl = useRequestURL();
-
-const isSubmitting = ref(false);
-const errorMessage = ref('');
-const rescue = ref<ActiveRescue | null>(null);
-const now = ref(Date.now());
-let timer: ReturnType<typeof setInterval> | undefined;
+const { logout } = useAuth();
+const { getDailyPoints, getRates, createRate, deactivateRate } = useAdmin();
 
 const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 });
-
-// Valor em centavos: cada dígito digitado entra pela direita (estilo
-// maquininha), então "2", "5", "9", "0" vira 0,02 → 0,25 → 2,59 → 25,90.
-// Trabalhar com inteiro evita erro de ponto flutuante até o envio.
-const MAX_AMOUNT_DIGITS = 9; // até R$ 9.999.999,99
-
-const amountCents = ref(0);
-
-const decimal = new Intl.NumberFormat('pt-BR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+const integer = new Intl.NumberFormat('pt-BR');
+const timeFormat = new Intl.DateTimeFormat('pt-BR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: STORE_TIME_ZONE,
+});
+const dateTimeFormat = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: STORE_TIME_ZONE,
+});
+const longDate = new Intl.DateTimeFormat('pt-BR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  // A data do relatório é um dia "puro" (YYYY-MM-DD); formatada em UTC
+  // para não voltar um dia por causa do fuso.
+  timeZone: 'UTC',
 });
 
-const amountDisplay = computed(() =>
-  amountCents.value ? decimal.format(amountCents.value / 100) : '',
+// ---- Registros de pontos do dia ----
+
+// Vazio = hoje (definido pela API no fuso da loja).
+const selectedDate = ref('');
+
+const {
+  data: report,
+  error: reportError,
+  status: reportStatus,
+  refresh: refreshReport,
+} = await useAsyncData(
+  'admin-daily-points',
+  () => getDailyPoints(selectedDate.value || undefined),
+  { watch: [selectedDate] },
 );
 
-function handleAmountInput(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const digits = input.value.replace(/\D/g, '').slice(0, MAX_AMOUNT_DIGITS);
-  amountCents.value = Number(digits) || 0;
-
-  // Reescreve o campo na hora (o Vue não re-renderiza se o valor formatado
-  // não mudou, ex.: ao digitar uma letra) e mantém o cursor no fim, já que
-  // o preenchimento é sempre da direita para a esquerda.
-  input.value = amountDisplay.value;
-  input.setSelectionRange(input.value.length, input.value.length);
-}
-
-const secondsLeft = computed(() =>
-  rescue.value
-    ? Math.max(0, Math.ceil((rescue.value.expiresAt - now.value) / 1000))
-    : 0,
-);
-const isExpired = computed(() => !!rescue.value && secondsLeft.value === 0);
-const countdown = computed(() => {
-  const minutes = Math.floor(secondsLeft.value / 60);
-  const seconds = String(secondsLeft.value % 60).padStart(2, '0');
-  return `${minutes}:${seconds}`;
-});
-
-// O QR aponta para o próprio domínio em que o admin está
-// (dilirewards.com.br em produção).
-const qrSvg = computed(() =>
-  rescue.value
-    ? renderSVG(
-        `${requestUrl.origin}/resgatar?code=${rescue.value.code}`,
-        { border: 2, blackColor: '#28374a', whiteColor: '#f8f6f5' },
-      )
+const reportDateLabel = computed(() =>
+  report.value
+    ? longDate.format(new Date(`${report.value.date}T00:00:00Z`))
     : '',
 );
 
-function stopTimer() {
-  if (timer) clearInterval(timer);
-  timer = undefined;
-}
+// ---- Taxa de conversão ----
 
-function startTimer() {
-  stopTimer();
-  now.value = Date.now();
-  timer = setInterval(() => {
-    now.value = Date.now();
-    if (isExpired.value) stopTimer();
-  }, 1000);
-}
+const {
+  data: rates,
+  error: ratesError,
+  refresh: refreshRates,
+} = await useAsyncData('admin-rates', getRates);
 
-async function generate(amount: number) {
-  errorMessage.value = '';
-  isSubmitting.value = true;
-  try {
-    const created = await createRescue(amount);
-    rescue.value = {
-      code: created.code,
-      amount,
-      expiresAt: new Date(created.expiresAt).getTime(),
-    };
-    startTimer();
-  } catch (error) {
-    errorMessage.value = extractErrorMessage(
-      error,
-      'Não foi possível gerar o QR Code. Tente novamente.',
-    );
-  } finally {
-    isSubmitting.value = false;
-  }
-}
+const currentRate = computed(() => rates.value?.[0] ?? null);
+// Taxa para a qual o programa volta quando os boosts expiram.
+const defaultRate = computed(
+  () => rates.value?.find((rate) => rate.expiresAt === null) ?? null,
+);
+const boosts = computed(
+  () => rates.value?.filter((rate) => rate.expiresAt !== null) ?? [],
+);
 
-function handleSubmit() {
-  if (amountCents.value <= 0) {
-    errorMessage.value = 'Informe o valor da compra.';
+const form = reactive({
+  pointsPerReal: '' as number | '',
+  temporary: true,
+  durationHours: 3 as number | '',
+  observation: '',
+});
+const isSaving = ref(false);
+const formError = ref('');
+const formSuccess = ref('');
+const endingId = ref<string | null>(null);
+const listError = ref('');
+
+async function handleCreateRate() {
+  formError.value = '';
+  formSuccess.value = '';
+
+  const pointsPerReal = Number(form.pointsPerReal);
+  if (!Number.isInteger(pointsPerReal) || pointsPerReal < 1) {
+    formError.value = 'Informe quantos pontos cada real vale (número inteiro).';
     return;
   }
-  generate(amountCents.value / 100);
+  const durationHours = Number(form.durationHours);
+  if (
+    form.temporary &&
+    (!Number.isInteger(durationHours) ||
+      durationHours < 1 ||
+      durationHours > MAX_DURATION_HOURS)
+  ) {
+    formError.value = `A duração deve ser de 1 a ${MAX_DURATION_HOURS} horas.`;
+    return;
+  }
+
+  isSaving.value = true;
+  try {
+    const created = await createRate({
+      pointsPerReal,
+      durationHours: form.temporary ? durationHours : undefined,
+      observation: form.observation.trim() || undefined,
+    });
+    formSuccess.value = created.expiresAt
+      ? `Promoção ativa até ${dateTimeFormat.format(new Date(created.expiresAt))}.`
+      : 'Nova taxa padrão ativa.';
+    form.pointsPerReal = '';
+    form.observation = '';
+    await refreshRates();
+  } catch (error) {
+    formError.value = extractErrorMessage(
+      error,
+      'Não foi possível salvar a taxa. Tente novamente.',
+    );
+  } finally {
+    isSaving.value = false;
+  }
 }
 
-function handleNewSale() {
-  stopTimer();
-  rescue.value = null;
-  amountCents.value = 0;
-  errorMessage.value = '';
+async function handleEndBoost(rate: ConversionRate) {
+  listError.value = '';
+  endingId.value = rate.id;
+  try {
+    await deactivateRate(rate.id);
+    await refreshRates();
+  } catch (error) {
+    listError.value = extractErrorMessage(
+      error,
+      'Não foi possível encerrar a promoção.',
+    );
+  } finally {
+    endingId.value = null;
+  }
 }
 
-onBeforeUnmount(stopTimer);
+async function handleLogout() {
+  logout();
+  await navigateTo('/login', { replace: true });
+}
 </script>
 
 <template>
-  <div class="admin">
-    <header class="admin__header">
+  <div class="panel">
+    <header class="panel__header">
       <img
-        src="/images/logo.svg"
+        src="/images/logo-single.svg"
         alt="Dili Cafés Especiais"
-        class="admin__logo"
-        width="96"
-        height="71"
+        class="panel__logo"
+        width="40"
+        height="40"
       />
-      <h1 class="admin__title">Nova venda</h1>
-      <p class="admin__subtitle">
-        {{
-          rescue
-            ? 'Peça para o cliente ler o QR Code com a câmera do celular.'
-            : 'Digite o valor da compra para gerar o QR Code de pontos.'
-        }}
-      </p>
+      <div class="panel__heading">
+        <h1 class="panel__title">Painel Dili Rewards</h1>
+        <p class="panel__subtitle">Gestão do programa de pontos</p>
+      </div>
+      <nav class="panel__actions">
+        <NuxtLink to="/generate" class="panel__button panel__button--primary">
+          Nova venda
+        </NuxtLink>
+        <button type="button" class="panel__button" @click="handleLogout">
+          Sair
+        </button>
+      </nav>
     </header>
 
-    <form
-      v-if="!rescue"
-      class="admin__form"
-      method="post"
-      novalidate
-      @submit.prevent="handleSubmit"
-    >
-      <label class="admin__field">
-        <span class="admin__label">Valor da compra</span>
-        <span class="admin__amount-input">
-          <span class="admin__currency" aria-hidden="true">R$</span>
+    <section class="panel__card" aria-labelledby="daily-title">
+      <div class="panel__card-header">
+        <div>
+          <h2 id="daily-title" class="panel__card-title">Pontos do dia</h2>
+          <p class="panel__card-subtitle">{{ reportDateLabel }}</p>
+        </div>
+        <label class="panel__date">
+          <span class="visually-hidden">Data</span>
           <input
-            :value="amountDisplay"
-            type="text"
-            inputmode="numeric"
-            name="purchaseAmount"
-            autocomplete="off"
-            required
-            placeholder="0,00"
-            class="admin__input"
-            @input="handleAmountInput"
+            :value="selectedDate || report?.date"
+            type="date"
+            class="panel__input"
+            @change="selectedDate = ($event.target as HTMLInputElement).value"
           />
-        </span>
-      </label>
+        </label>
+      </div>
 
-      <p v-if="errorMessage" class="admin__error" role="alert">
-        {{ errorMessage }}
+      <p v-if="reportError" class="panel__error" role="alert">
+        Não foi possível carregar os registros.
+        <button type="button" class="panel__link" @click="refreshReport()">
+          Tentar novamente
+        </button>
       </p>
 
-      <button type="submit" class="admin__primary" :disabled="isSubmitting">
-        {{ isSubmitting ? 'Gerando…' : 'Gerar QR Code' }}
-      </button>
-    </form>
+      <template v-else-if="report">
+        <dl class="panel__stats">
+          <div class="panel__stat">
+            <dt>Vendas</dt>
+            <dd>{{ integer.format(report.totals.credits) }}</dd>
+          </div>
+          <div class="panel__stat">
+            <dt>Valor total</dt>
+            <dd>{{ currency.format(report.totals.purchaseAmount) }}</dd>
+          </div>
+          <div class="panel__stat">
+            <dt>Pontos creditados</dt>
+            <dd>{{ integer.format(report.totals.points) }}</dd>
+          </div>
+        </dl>
 
-    <section v-else class="admin__qr" aria-live="polite">
-      <p class="admin__qr-amount">{{ currency.format(rescue.amount) }}</p>
+        <p v-if="!report.items.length" class="panel__empty">
+          Nenhum ponto creditado neste dia.
+        </p>
 
-      <!-- SVG gerado localmente pelo uqr a partir da nossa própria URL -->
-      <div
-        class="admin__qr-code"
-        :class="{ 'admin__qr-code--expired': isExpired }"
-        role="img"
-        aria-label="QR Code para o cliente resgatar os pontos"
-        v-html="qrSvg"
-      />
+        <div
+          v-else
+          class="panel__table-wrap"
+          :class="{ 'panel__table-wrap--loading': reportStatus === 'pending' }"
+        >
+          <table class="panel__table">
+            <thead>
+              <tr>
+                <th scope="col">Cliente</th>
+                <th scope="col">Horário</th>
+                <th scope="col" class="panel__num">Valor da compra</th>
+                <th scope="col" class="panel__num">Pontos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in report.items" :key="item.id">
+                <td>{{ item.userName }}</td>
+                <td>{{ timeFormat.format(new Date(item.createdAt)) }}</td>
+                <td class="panel__num">
+                  {{ currency.format(item.purchaseAmount) }}
+                </td>
+                <td class="panel__num">{{ integer.format(item.points) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </section>
 
-      <p v-if="!isExpired" class="admin__qr-timer">
-        Expira em <strong>{{ countdown }}</strong>
+    <section class="panel__card" aria-labelledby="rates-title">
+      <div class="panel__card-header">
+        <div>
+          <h2 id="rates-title" class="panel__card-title">Taxa de conversão</h2>
+          <p class="panel__card-subtitle">Pontos creditados por real gasto</p>
+        </div>
+      </div>
+
+      <p v-if="ratesError" class="panel__error" role="alert">
+        Não foi possível carregar as taxas.
+        <button type="button" class="panel__link" @click="refreshRates()">
+          Tentar novamente
+        </button>
       </p>
-      <p v-else class="admin__error" role="alert">Este QR Code expirou.</p>
 
-      <p v-if="errorMessage" class="admin__error" role="alert">
-        {{ errorMessage }}
-      </p>
+      <template v-else>
+        <div v-if="currentRate" class="panel__current">
+          <p class="panel__current-value">
+            {{ integer.format(currentRate.pointsPerReal) }}
+            <span>pontos por R$ 1</span>
+          </p>
+          <p class="panel__current-note">
+            <template v-if="currentRate.expiresAt">
+              Promoção até
+              {{ dateTimeFormat.format(new Date(currentRate.expiresAt)) }}
+              <template v-if="defaultRate">
+                — depois volta para
+                {{ integer.format(defaultRate.pointsPerReal) }} pontos
+              </template>
+            </template>
+            <template v-else>Taxa padrão, sem prazo</template>
+          </p>
+        </div>
 
-      <button
-        v-if="isExpired"
-        type="button"
-        class="admin__primary"
-        :disabled="isSubmitting"
-        @click="generate(rescue.amount)"
-      >
-        {{ isSubmitting ? 'Gerando…' : 'Gerar novamente' }}
-      </button>
-      <button type="button" class="admin__secondary" @click="handleNewSale">
-        Nova venda
-      </button>
+        <ul v-if="boosts.length" class="panel__boosts">
+          <li v-for="rate in boosts" :key="rate.id" class="panel__boost">
+            <div>
+              <strong>{{ integer.format(rate.pointsPerReal) }} pts/R$</strong>
+              até {{ dateTimeFormat.format(new Date(rate.expiresAt!)) }}
+              <span v-if="rate.observation" class="panel__boost-note">
+                {{ rate.observation }}
+              </span>
+            </div>
+            <button
+              type="button"
+              class="panel__link"
+              :disabled="endingId === rate.id"
+              @click="handleEndBoost(rate)"
+            >
+              {{ endingId === rate.id ? 'Encerrando…' : 'Encerrar' }}
+            </button>
+          </li>
+        </ul>
+        <p v-if="listError" class="panel__error" role="alert">
+          {{ listError }}
+        </p>
+      </template>
+
+      <form class="panel__form" novalidate @submit.prevent="handleCreateRate">
+        <h3 class="panel__form-title">Nova taxa</h3>
+
+        <div class="panel__toggle" role="radiogroup" aria-label="Tipo de taxa">
+          <label>
+            <input v-model="form.temporary" type="radio" :value="true" />
+            Promoção por tempo limitado
+          </label>
+          <label>
+            <input v-model="form.temporary" type="radio" :value="false" />
+            Nova taxa padrão
+          </label>
+        </div>
+
+        <div class="panel__fields">
+          <label class="panel__field">
+            <span class="panel__label">Pontos por R$ 1</span>
+            <input
+              v-model.number="form.pointsPerReal"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+              required
+              :placeholder="String(currentRate?.pointsPerReal ?? 100)"
+              class="panel__input"
+            />
+          </label>
+
+          <label v-if="form.temporary" class="panel__field">
+            <span class="panel__label">Duração (horas)</span>
+            <input
+              v-model.number="form.durationHours"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              :max="MAX_DURATION_HOURS"
+              step="1"
+              required
+              class="panel__input"
+            />
+          </label>
+        </div>
+
+        <label class="panel__field">
+          <span class="panel__label">Observação (opcional)</span>
+          <input
+            v-model="form.observation"
+            type="text"
+            maxlength="500"
+            placeholder="Ex.: Happy hour de sexta"
+            class="panel__input"
+          />
+        </label>
+
+        <p class="panel__hint">
+          <template v-if="form.temporary">
+            Ao fim do prazo, a taxa volta sozinha para a padrão ({{
+              integer.format(defaultRate?.pointsPerReal ?? 100)
+            }}
+            pontos por real).
+          </template>
+          <template v-else>
+            A nova taxa substitui a padrão atual e vale até ser trocada.
+          </template>
+        </p>
+
+        <p v-if="formError" class="panel__error" role="alert">
+          {{ formError }}
+        </p>
+        <p v-if="formSuccess" class="panel__success" role="status">
+          {{ formSuccess }}
+        </p>
+
+        <button
+          type="submit"
+          class="panel__button panel__button--primary"
+          :disabled="isSaving"
+        >
+          {{ isSaving ? 'Salvando…' : 'Aplicar taxa' }}
+        </button>
+      </form>
     </section>
   </div>
 </template>
 
 <style scoped lang="scss">
-.admin {
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.panel {
   min-height: 100dvh;
-  max-width: 26rem;
+  max-width: 56rem;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 3rem;
+  padding: 2rem 1rem 3rem;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1.5rem;
 
   &__header {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
-    text-align: center;
+    gap: 0.75rem 1rem;
   }
 
   &__logo {
-    width: 3.5rem;
+    width: 2.5rem;
     height: auto;
-    margin-bottom: 0.5rem;
+  }
+
+  &__heading {
+    flex: 1;
+    min-width: 10rem;
   }
 
   &__title {
     font-family: 'Montserrat Alternates', sans-serif;
     font-weight: 700;
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     color: var(--color-navy);
     margin: 0;
   }
 
-  &__subtitle {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--color-navy-muted);
-  }
-
-  &__form,
-  &__qr {
-    display: flex;
-    flex-direction: column;
-    gap: 1.1rem;
-  }
-
-  &__field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  &__label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-navy-muted);
-  }
-
-  &__amount-input {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.85rem 1rem;
-    border-radius: 0.9rem;
-    border: 1.5px solid var(--color-navy-soft);
-    background: var(--color-cream-high);
-    transition: border-color 0.2s ease;
-
-    &:focus-within {
-      border-color: var(--color-navy);
-    }
-  }
-
-  &__currency {
-    font-weight: 700;
-    font-size: 1.4rem;
-    color: var(--color-navy-muted);
-  }
-
-  &__input {
-    flex: 1;
-    min-width: 0;
-    font: inherit;
-    font-weight: 700;
-    font-size: 1.4rem;
-    border: none;
-    background: transparent;
-    color: var(--color-ink);
-    outline: none;
-
-    &::placeholder {
-      color: var(--color-navy-muted);
-      opacity: 0.6;
-    }
-  }
-
-  &__error {
+  &__subtitle,
+  &__card-subtitle {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--color-maroon);
-    font-weight: 600;
-    text-align: center;
+    color: var(--color-navy-muted);
   }
 
-  &__primary,
-  &__secondary {
-    padding: 1rem 1.4rem;
+  &__card-subtitle::first-letter {
+    text-transform: uppercase;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.2rem;
     border-radius: 999px;
     border: 1.5px solid var(--color-navy);
+    background: transparent;
+    color: var(--color-navy);
     font: inherit;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    text-decoration: none;
     cursor: pointer;
     transition: opacity 0.2s ease;
+
+    &--primary {
+      background: var(--color-navy);
+      color: var(--color-cream-high);
+    }
 
     &:disabled {
       opacity: 0.6;
@@ -347,53 +489,262 @@ onBeforeUnmount(stopTimer);
     }
   }
 
-  &__primary {
-    background: var(--color-navy);
-    color: var(--color-cream-high);
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+    background: var(--color-cream-high);
+    box-shadow: 0 0.5rem 1.5rem var(--color-navy-soft);
   }
 
-  &__secondary {
-    background: transparent;
-    color: var(--color-navy);
+  &__card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
-  &__qr-amount {
+  &__card-title {
     margin: 0;
-    text-align: center;
-    font-size: 1.6rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: var(--color-navy);
   }
 
-  &__qr-code {
-    width: min(100%, 18rem);
-    margin: 0 auto;
-    padding: 0.75rem;
-    border-radius: 1.25rem;
-    background: var(--color-cream-high);
-    box-shadow: 0 0.5rem 1.5rem var(--color-navy-soft);
-    transition: opacity 0.3s ease;
+  &__input {
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.8rem;
+    border: 1.5px solid var(--color-navy-soft);
+    background: var(--color-cream);
+    color: var(--color-ink);
+    outline: none;
+    min-width: 0;
+    transition: border-color 0.2s ease;
 
-    :deep(svg) {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-
-    &--expired {
-      opacity: 0.2;
+    &:focus-visible {
+      border-color: var(--color-navy);
     }
   }
 
-  &__qr-timer {
+  &__stats {
     margin: 0;
-    text-align: center;
-    color: var(--color-navy-muted);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.75rem;
+  }
 
-    strong {
+  &__stat {
+    padding: 0.85rem 1rem;
+    border-radius: 0.9rem;
+    background: var(--color-cream);
+
+    dt {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-navy-muted);
+    }
+
+    dd {
+      margin: 0.2rem 0 0;
+      font-size: 1.3rem;
+      font-weight: 800;
       color: var(--color-navy);
       font-variant-numeric: tabular-nums;
     }
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+    transition: opacity 0.2s ease;
+
+    &--loading {
+      opacity: 0.5;
+    }
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+
+    th,
+    td {
+      padding: 0.7rem 0.6rem;
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--color-navy-soft);
+    }
+
+    th {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--color-navy-muted);
+    }
+
+    td {
+      color: var(--color-ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  &__num {
+    text-align: right !important;
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 1.5rem 0;
+    text-align: center;
+    color: var(--color-navy-muted);
+  }
+
+  &__current {
+    padding: 1rem 1.1rem;
+    border-radius: 0.9rem;
+    background: var(--color-navy);
+    color: var(--color-cream-high);
+  }
+
+  &__current-value {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+
+    span {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  }
+
+  &__current-note {
+    margin: 0.2rem 0 0;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+
+  &__boosts {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__boost {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.8rem;
+    background: var(--color-maroon-soft);
+    color: var(--color-ink);
+    font-size: 0.95rem;
+  }
+
+  &__boost-note {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--color-navy-muted);
+  }
+
+  &__link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--color-maroon);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--color-navy-soft);
+  }
+
+  &__form-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--color-navy);
+  }
+
+  &__toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    font-size: 0.95rem;
+    color: var(--color-ink);
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+
+    input {
+      accent-color: var(--color-navy);
+    }
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1rem;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  &__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-navy-muted);
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-navy-muted);
+  }
+
+  &__error,
+  &__success {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  &__error {
+    color: var(--color-maroon);
+  }
+
+  &__success {
+    color: var(--color-navy);
   }
 }
 </style>

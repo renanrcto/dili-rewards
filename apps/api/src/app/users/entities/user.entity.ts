@@ -15,7 +15,10 @@ export enum AuthProvider {
 
 export enum UserRole {
   CUSTOMER = 'customer',
+  // Operador do caixa: gera o QR Code de pontos das vendas.
   ADMIN = 'admin',
+  // Gestor do programa: painel gerencial e taxas de conversão.
+  SUPER_ADMIN = 'super_admin',
 }
 
 @Entity('users')

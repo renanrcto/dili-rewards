@@ -15,6 +15,10 @@ import { User } from '../../users/entities/user.entity';
   where: '"active" = true',
 })
 @Check('CHK_points_conversion_rates_positive', '"points_per_real" > 0')
+@Check(
+  'CHK_points_conversion_rates_expires_after_created',
+  '"expires_at" IS NULL OR "expires_at" > "created_at"',
+)
 export class PointsConversionRate {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -41,4 +45,9 @@ export class PointsConversionRate {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
+
+  // Fim da taxa promocional (boost); NULL = sem prazo. Depois disso a taxa
+  // vigente volta para a ativa anterior.
+  @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
+  expiresAt!: Date | null;
 }

@@ -28,17 +28,24 @@ export class ConversionRatesController {
     return this.ratesService.getCurrent();
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @Get()
+  list(): Promise<PointsConversionRate[]> {
+    return this.ratesService.listInEffect();
+  }
+
+  @Roles(UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @Post()
   create(
-    @CurrentUser() admin: User,
+    @CurrentUser() superAdmin: User,
     @Body() dto: CreateConversionRateDto,
   ): Promise<PointsConversionRate> {
-    return this.ratesService.create(dto, admin.id);
+    return this.ratesService.create(dto, superAdmin.id);
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @Patch(':id')
   update(

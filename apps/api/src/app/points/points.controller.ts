@@ -28,7 +28,7 @@ export class PointsController {
   // Admin no caixa gera o código que vai no QR Code. O admin é sempre
   // quem está autenticado — nunca aceito pelo body — para que o registro
   // de auditoria não possa ser forjado.
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @Post('rescues')
   createRescue(

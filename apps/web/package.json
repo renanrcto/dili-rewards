@@ -15,7 +15,7 @@
         "outputs": [],
         "options": {
           "cwd": "apps/web",
-          "command": "nuxt typecheck"
+          "command": "nuxt prepare && vue-tsc --noEmit -p tsconfig.app.json"
         }
       }
     }

@@ -53,7 +53,7 @@ export class PointsController {
     return this.pointsService.getBalance(user.id);
   }
 
-  // Nível do usuário (standard/gold/platinum): o maior entre a garantia
+  // Nível do usuário (standard/gold/platinum/black): o maior entre a garantia
   // gravada na subida de nível (ou forçada) e a atividade dos últimos
   // 2 meses.
   @Get('tier')

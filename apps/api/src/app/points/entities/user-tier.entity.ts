@@ -14,6 +14,7 @@ import { User } from '../../users/entities/user.entity';
 export enum GrantedTier {
   GOLD = 'gold',
   PLATINUM = 'platinum',
+  BLACK = 'black',
 }
 
 export enum TierSource {

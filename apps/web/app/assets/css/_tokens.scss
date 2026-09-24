@@ -25,6 +25,12 @@ $font-sans:
   --color-cream-high: #f8f6f5;
   --color-ink: #2a2a2a;
 
+  // Cores dos níveis do programa (selo, nome e barra de progresso).
+  --tier-gold: linear-gradient(to right, #e3b94d, #a8741a);
+  --tier-platinum: linear-gradient(to right, #cacaca, #9c9c9c);
+  // Black piano: preto profundo com um leve brilho de verniz.
+  --tier-black: linear-gradient(135deg, #000000 0%, #808080 50%, #000000 100%);
+
   --font-sans: #{$font-sans};
 
   color-scheme: light;

@@ -20,6 +20,17 @@ export interface UserTierStatus {
   visits: number;
   points: number;
   since: Date;
+  // O que falta para o próximo nível; null no nível máximo.
+  next: NextTierProgress | null;
+}
+
+export interface NextTierProgress {
+  tier: GrantedTier;
+  // Basta completar um dos dois (visitas OU pontos) na janela de atividade.
+  visitsRequired: number;
+  pointsRequired: number;
+  visitsMissing: number;
+  pointsMissing: number;
 }
 
 interface Activity {
@@ -34,12 +45,14 @@ const ACTIVITY_WINDOW = '2 months';
 const TIER_LOCK = '3 months';
 
 // Basta cumprir um dos critérios (visitas OU pontos) para subir de nível.
-// Ordenado do mais alto para o mais baixo; limites exclusivos ("mais de").
+// Ordenado do mais alto para o mais baixo; limites inclusivos (a partir de
+// 10 visitas já é gold).
 const TIER_RULES: {
   tier: GrantedTier;
   minVisits: number;
   minPoints: number;
 }[] = [
+  { tier: GrantedTier.BLACK, minVisits: 30, minPoints: 350_000 },
   { tier: GrantedTier.PLATINUM, minVisits: 15, minPoints: 200_000 },
   { tier: GrantedTier.GOLD, minVisits: 10, minPoints: 100_000 },
 ];
@@ -48,11 +61,31 @@ const TIER_RANK: Record<TierLevel, number> = {
   standard: 0,
   [GrantedTier.GOLD]: 1,
   [GrantedTier.PLATINUM]: 2,
+  [GrantedTier.BLACK]: 3,
 };
+
+// Próximo nível acima do vigente, com o que falta pela atividade atual.
+function nextTierProgress(
+  current: TierLevel,
+  { visits, points }: Pick<Activity, 'visits' | 'points'>,
+): NextTierProgress | null {
+  const rule = [...TIER_RULES]
+    .reverse()
+    .find((r) => TIER_RANK[r.tier] > TIER_RANK[current]);
+  if (!rule) return null;
+
+  return {
+    tier: rule.tier,
+    visitsRequired: rule.minVisits,
+    pointsRequired: rule.minPoints,
+    visitsMissing: Math.max(0, rule.minVisits - visits),
+    pointsMissing: Math.max(0, rule.minPoints - points),
+  };
+}
 
 function tierFor({ visits, points }: Pick<Activity, 'visits' | 'points'>) {
   const rule = TIER_RULES.find(
-    (r) => visits > r.minVisits || points > r.minPoints,
+    (r) => visits >= r.minVisits || points >= r.minPoints,
   );
   return rule?.tier ?? 'standard';
 }
@@ -79,9 +112,16 @@ export class TiersService {
         tier: grant.tier,
         source: grant.source,
         lockedUntil: grant.lockedUntil,
+        next: nextTierProgress(grant.tier, activity),
       };
     }
-    return { ...activity, tier: activityTier, source: null, lockedUntil: null };
+    return {
+      ...activity,
+      tier: activityTier,
+      source: null,
+      lockedUntil: null,
+      next: nextTierProgress(activityTier, activity),
+    };
   }
 
   // Chamado na mesma transação do crédito, depois de gravar o UserPoints.
@@ -160,7 +200,7 @@ export class TiersService {
         .where('t.user_id = :userId', { userId })
         .andWhere('t.revoked_at IS NULL')
         .andWhere('(t.locked_until IS NULL OR t.locked_until > now())')
-        // Ordem do enum no Postgres: gold < platinum.
+        // Ordem do enum no Postgres: gold < platinum < black.
         .orderBy('t.tier', 'DESC')
         .addOrderBy('t.lockedUntil', 'DESC', 'NULLS FIRST')
         .getOne()

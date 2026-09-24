@@ -86,7 +86,8 @@ const formattedPoints = computed(() =>
     color: var(--color-navy);
 
     &--gold,
-    &--platinum {
+    &--platinum,
+    &--black {
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -94,11 +95,15 @@ const formattedPoints = computed(() =>
     }
 
     &--gold {
-      background-image: linear-gradient(to right, #e3b94d, #a8741a);
+      background-image: var(--tier-gold);
     }
 
     &--platinum {
-      background-image: linear-gradient(to right, #CACACA, #9C9C9C);
+      background-image: var(--tier-platinum);
+    }
+
+    &--black {
+      background-image: var(--tier-black);
     }
   }
 

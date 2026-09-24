@@ -27,7 +27,16 @@ export interface PointsHistoryItem {
   expiresAt: string;
 }
 
-export type TierLevel = 'standard' | 'gold' | 'platinum';
+export type TierLevel = 'standard' | 'gold' | 'platinum' | 'black';
+
+export interface NextTierProgress {
+  tier: Exclude<TierLevel, 'standard'>;
+  // Basta completar um dos dois (visitas OU pontos).
+  visitsRequired: number;
+  pointsRequired: number;
+  visitsMissing: number;
+  pointsMissing: number;
+}
 
 export interface UserTierStatus {
   tier: TierLevel;
@@ -36,6 +45,8 @@ export interface UserTierStatus {
   visits: number;
   points: number;
   since: string;
+  // null no nível máximo.
+  next: NextTierProgress | null;
 }
 
 export interface PointsHistoryPage {
@@ -61,7 +72,7 @@ export function usePoints() {
     );
   }
 
-  /** Nível do usuário logado (standard/gold/platinum). */
+  /** Nível do usuário logado (standard/gold/platinum/black). */
   function getTier(): Promise<UserTierStatus> {
     return $fetch<UserTierStatus>(`${config.public.apiBaseUrl}/points/tier`, {
       headers: authHeaders(),

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminPointsController } from './admin-points.controller';
 import { ConversionRatesController } from './conversion-rates.controller';
 import { ConversionRatesService } from './conversion-rates.service';
 import { PointsConversionRate } from './entities/points-conversion-rate.entity';
@@ -19,7 +20,11 @@ import { TiersService } from './tiers.service';
       UserTier,
     ]),
   ],
-  controllers: [PointsController, ConversionRatesController],
+  controllers: [
+    PointsController,
+    ConversionRatesController,
+    AdminPointsController,
+  ],
   providers: [PointsService, ConversionRatesService, TiersService],
 })
 export class PointsModule {}

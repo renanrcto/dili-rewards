@@ -1,4 +1,11 @@
-import type { AuthAccount } from './useAuth';
+import type { AuthAccount, AuthAccountRole } from './useAuth';
+
+// Tela inicial de cada perfil depois do login.
+const HOME_BY_ROLE: Record<AuthAccountRole, string> = {
+  customer: '/',
+  admin: '/generate',
+  super_admin: '/admin',
+};
 
 // Só caminhos internos ("/algo") — bloqueia "//evil.com" e "/\evil.com",
 // que o navegador trata como URL de outro domínio (open redirect).
@@ -20,9 +27,7 @@ export function useAuthRedirect() {
   });
 
   function goAfterAuth(account: AuthAccount) {
-    return navigateTo(
-      redirect.value ?? (account.role === 'admin' ? '/admin' : '/'),
-    );
+    return navigateTo(redirect.value ?? HOME_BY_ROLE[account.role]);
   }
 
   return { redirect, goAfterAuth };

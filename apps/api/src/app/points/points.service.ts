@@ -35,6 +35,23 @@ export interface RescueCode {
   expiresAt: Date;
 }
 
+export interface DailyPointsItem {
+  id: string;
+  userName: string;
+  purchaseAmount: number;
+  points: number;
+  createdAt: Date;
+}
+
+export interface DailyPointsReport {
+  date: string;
+  items: DailyPointsItem[];
+  totals: { credits: number; purchaseAmount: number; points: number };
+}
+
+// Fuso da loja: define onde começa e termina "o dia" do painel.
+const STORE_TIME_ZONE = 'America/Sao_Paulo';
+
 export interface PaginatedPointsHistory {
   items: PointsHistoryItem[];
   page: number;
@@ -153,6 +170,69 @@ export class PointsService {
       total,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  // Painel do super-admin: todos os créditos de um dia (padrão: hoje no
+  // fuso da loja), mais recentes primeiro.
+  async getDailyCredits(date?: string): Promise<DailyPointsReport> {
+    const day = date ?? (await this.storeToday());
+
+    // Intervalo em timestamptz (e não um cast da coluna) para aproveitar
+    // índices em created_at. CAST em vez de "::" para não confundir o
+    // parser de parâmetros do TypeORM.
+    const rows = await this.pointsRepository
+      .createQueryBuilder('p')
+      .innerJoin('p.user', 'u')
+      .select('p.id', 'id')
+      .addSelect('u.name', 'userName')
+      .addSelect('p.purchase_amount', 'purchaseAmount')
+      .addSelect('p.points', 'points')
+      .addSelect('p.created_at', 'createdAt')
+      .where(
+        `p.created_at >= CAST(CAST(:day AS date) AS timestamp) AT TIME ZONE :tz`,
+      )
+      .andWhere(
+        `p.created_at < CAST(CAST(:day AS date) + 1 AS timestamp) AT TIME ZONE :tz`,
+      )
+      .setParameters({ day, tz: STORE_TIME_ZONE })
+      .orderBy('p.created_at', 'DESC')
+      .addOrderBy('p.id', 'DESC')
+      .getRawMany<{
+        id: string;
+        userName: string;
+        purchaseAmount: string;
+        points: number;
+        createdAt: Date;
+      }>();
+
+    // numeric vem como string do driver pg.
+    const items = rows.map((row) => ({
+      ...row,
+      purchaseAmount: Number(row.purchaseAmount),
+    }));
+    // Soma em centavos para não acumular erro de ponto flutuante.
+    const totalCents = items.reduce(
+      (sum, item) => sum + Math.round(item.purchaseAmount * 100),
+      0,
+    );
+
+    return {
+      date: day,
+      items,
+      totals: {
+        credits: items.length,
+        purchaseAmount: totalCents / 100,
+        points: items.reduce((sum, item) => sum + item.points, 0),
+      },
+    };
+  }
+
+  private async storeToday(): Promise<string> {
+    const [row] = await this.dataSource.query<{ today: string }[]>(
+      `SELECT to_char(now() AT TIME ZONE $1, 'YYYY-MM-DD') AS today`,
+      [STORE_TIME_ZONE],
+    );
+    return row.today;
   }
 
   private toHistoryItem(row: UserPoints, now: Date): PointsHistoryItem {

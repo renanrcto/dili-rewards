@@ -1,5 +1,5 @@
 export type AuthAccountProvider = 'local' | 'google' | 'apple';
-export type AuthAccountRole = 'customer' | 'admin';
+export type AuthAccountRole = 'customer' | 'admin' | 'super_admin';
 
 export interface AuthAccount {
   id: string;

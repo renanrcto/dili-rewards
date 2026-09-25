@@ -1,19 +1,24 @@
 <script setup lang="ts">
 import type { PointsHistoryItem, PointsStatus } from '~/composables/usePoints';
+import type { ClientTab } from '~/utils/tabs';
 
-definePageMeta({ middleware: 'auth', bottomMenu: true });
+const emit = defineEmits<{ navigate: [tab: ClientTab] }>();
 
 const PAGE_SIZE = 20;
+// Linhas de skeleton enquanto a primeira página carrega.
+const SKELETON_ROWS = 4;
 
 const { getHistory } = usePoints();
 
-// A primeira página vem no SSR; as seguintes são anexadas no cliente pelo
+// A primeira página carrega ao abrir a aba; as seguintes são anexadas pelo
 // "Carregar mais".
 const {
   data: firstPage,
   error,
   refresh,
-} = await useAsyncData('points-history', () => getHistory(1, PAGE_SIZE));
+} = useAsyncData('points-history', () => getHistory(1, PAGE_SIZE));
+
+const isLoading = computed(() => !firstPage.value && !error.value);
 
 const extraItems = ref<PointsHistoryItem[]>([]);
 const loadedPages = ref(1);
@@ -84,7 +89,12 @@ function expiryText(item: PointsHistoryItem): string {
 <template>
   <div class="history">
     <header class="history__header">
-      <NuxtLink to="/" class="history__back" aria-label="Voltar ao início">
+      <button
+        type="button"
+        class="history__back"
+        aria-label="Voltar ao início"
+        @click="emit('navigate', 'home')"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M20 12H4M10 6l-6 6 6 6"
@@ -95,14 +105,33 @@ function expiryText(item: PointsHistoryItem): string {
             stroke-linejoin="round"
           />
         </svg>
-      </NuxtLink>
+      </button>
       <h1 class="history__title">Histórico de pontos</h1>
       <p v-if="total" class="history__count">
         {{ total }} {{ total === 1 ? 'compra' : 'compras' }}
       </p>
     </header>
 
-    <div v-if="error" class="history__empty" role="alert">
+    <ul v-if="isLoading" class="history__list" aria-busy="true">
+      <li
+        v-for="row in SKELETON_ROWS"
+        :key="row"
+        class="history__item history__item--skeleton"
+        aria-hidden="true"
+      >
+        <div class="history__item-main">
+          <SkeletonBlock width="7rem" height="0.8rem" />
+          <SkeletonBlock width="9.5rem" height="1.1rem" />
+          <SkeletonBlock width="8rem" height="0.8rem" />
+        </div>
+        <div class="history__item-side">
+          <SkeletonBlock width="4rem" height="1.3rem" />
+          <SkeletonBlock width="4.5rem" height="1.1rem" radius="999px" />
+        </div>
+      </li>
+    </ul>
+
+    <div v-else-if="error" class="history__empty" role="alert">
       <p>Não foi possível carregar seu histórico.</p>
       <button type="button" class="history__more" @click="refresh()">
         Tentar novamente
@@ -112,8 +141,8 @@ function expiryText(item: PointsHistoryItem): string {
     <div v-else-if="!items.length" class="history__empty">
       <p class="history__empty-title">Nenhum ponto por aqui ainda.</p>
       <p>
-        Na sua próxima compra, peça o QR Code no caixa e leia com a câmera
-        do celular.
+        Na sua próxima compra, peça o QR Code no caixa e leia com a câmera do
+        celular.
       </p>
     </div>
 
@@ -190,6 +219,7 @@ function expiryText(item: PointsHistoryItem): string {
     border-radius: 50%;
     background: var(--color-navy-soft);
     color: var(--color-navy);
+    cursor: pointer;
 
     svg {
       width: 1.3rem;
@@ -293,6 +323,13 @@ function expiryText(item: PointsHistoryItem): string {
         font-size: 0.8rem;
         font-weight: 700;
       }
+    }
+
+    // Espaço extra entre os blocos para a linha de skeleton ter a mesma
+    // altura de uma linha carregada.
+    &--skeleton &-main,
+    &--skeleton &-side {
+      gap: 0.55rem;
     }
 
     &--expired,

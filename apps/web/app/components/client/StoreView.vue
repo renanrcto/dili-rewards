@@ -1,7 +1,3 @@
-<script setup lang="ts">
-definePageMeta({ middleware: 'auth', bottomMenu: true });
-</script>
-
 <template>
   <div class="store">
     <header class="store__header">
@@ -22,8 +18,8 @@ definePageMeta({ middleware: 'auth', bottomMenu: true });
       </div>
       <p class="store__soon-title">Em breve</p>
       <p class="store__soon-text">
-        Em breve você poderá ver aqui os produtos disponíveis para trocar
-        pelos seus pontos.
+        Em breve você poderá ver aqui os produtos disponíveis para trocar pelos
+        seus pontos.
       </p>
     </section>
   </div>

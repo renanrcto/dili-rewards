@@ -1,27 +1,48 @@
 <script setup lang="ts">
+import type { ClientTab } from '~/utils/tabs';
+
 // Navegação principal do app (Figma: MenuBottom, node 4612:16). Fica fixa no
-// rodapé e é renderizada pelo app.vue nas páginas com `bottomMenu: true`.
+// rodapé e é renderizada pela página "/" do cliente.
+//
+// Troca a aba ativa (v-model) em vez de navegar entre rotas — ver
+// utils/tabs.ts.
 //
 // Os ícones são aplicados como máscara CSS para que a cor venha de
 // `currentColor` — assim o item ativo troca de cor sem precisar de uma segunda
 // versão de cada SVG.
-const items = [
-  { to: '/', label: 'Início', icon: 'home', width: 27.5, height: 20.6627 },
-  { to: '/historico', label: 'Histórico', icon: 'history', width: 22.1536, height: 22.7 },
-  { to: '/loja', label: 'Loja', icon: 'cart', width: 28, height: 26.5 },
-  { to: '/perfil', label: 'Perfil', icon: 'profile', width: 19, height: 21 },
+const tab = defineModel<ClientTab>({ required: true });
+
+const items: {
+  tab: ClientTab;
+  label: string;
+  icon: string;
+  width: number;
+  height: number;
+}[] = [
+  { tab: 'home', label: 'Início', icon: 'home', width: 27.5, height: 20.6627 },
+  {
+    tab: 'history',
+    label: 'Histórico',
+    icon: 'history',
+    width: 22.1536,
+    height: 22.7,
+  },
+  { tab: 'store', label: 'Loja', icon: 'cart', width: 28, height: 26.5 },
+  { tab: 'profile', label: 'Perfil', icon: 'profile', width: 19, height: 21 },
 ];
 </script>
 
 <template>
   <nav class="menu-bottom" aria-label="Navegação principal">
-    <NuxtLink
+    <button
       v-for="item in items"
-      :key="item.to"
-      :to="item.to"
+      :key="item.tab"
+      type="button"
       :aria-label="item.label"
+      :aria-current="tab === item.tab ? 'page' : undefined"
       class="menu-bottom__item"
-      active-class="menu-bottom__item--active"
+      :class="{ 'menu-bottom__item--active': tab === item.tab }"
+      @click="tab = item.tab"
     >
       <span
         class="menu-bottom__icon"
@@ -32,7 +53,7 @@ const items = [
           '--icon': `url(/images/menu/${item.icon}.svg)`,
         }"
       />
-    </NuxtLink>
+    </button>
   </nav>
 </template>
 
@@ -60,6 +81,10 @@ const items = [
     display: grid;
     place-items: center;
     border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
     transition:
       background-color 0.2s ease,
       color 0.2s ease;

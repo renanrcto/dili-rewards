@@ -1,9 +1,10 @@
 import type { AuthAccount, AuthAccountRole } from './useAuth';
 
-// Tela inicial de cada perfil depois do login.
+// Tela inicial de cada perfil depois do login. Admin e super-admin usam a
+// mesma rota; o que muda é o que ela mostra (ver pages/admin.vue).
 const HOME_BY_ROLE: Record<AuthAccountRole, string> = {
   customer: '/',
-  admin: '/generate',
+  admin: '/admin',
   super_admin: '/admin',
 };
 
@@ -27,7 +28,11 @@ export function useAuthRedirect() {
   });
 
   function goAfterAuth(account: AuthAccount) {
-    return navigateTo(redirect.value ?? HOME_BY_ROLE[account.role]);
+    // `replace` tira o login do histórico: o voltar do celular fecha o app
+    // em vez de voltar para a tela de login.
+    return navigateTo(redirect.value ?? HOME_BY_ROLE[account.role], {
+      replace: true,
+    });
   }
 
   return { redirect, goAfterAuth };

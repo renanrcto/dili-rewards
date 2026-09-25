@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Destino do QR Code gerado no caixa (/resgatar?code=<uuid>). Sem login, o
-// middleware manda para /login e volta para cá depois.
+// middleware manda para /login e volta para cá depois. Os links de saída usam
+// `replace` para o voltar do celular não reabrir o resgate já feito.
 definePageMeta({ middleware: 'auth' });
 
 type RedeemState =
@@ -66,13 +67,15 @@ onMounted(async () => {
       <h1 class="redeem__title">Pontos creditados!</h1>
       <p class="redeem__points">+{{ formattedPoints }} pontos</p>
       <p class="redeem__text">Obrigado por escolher a Dili.</p>
-      <NuxtLink to="/" class="redeem__button">Ver meus pontos</NuxtLink>
+      <NuxtLink to="/" replace class="redeem__button">Ver meus pontos</NuxtLink>
     </template>
 
     <template v-else>
       <h1 class="redeem__title">Não foi possível resgatar</h1>
       <p class="redeem__error" role="alert">{{ state.message }}</p>
-      <NuxtLink to="/" class="redeem__button">Voltar ao início</NuxtLink>
+      <NuxtLink to="/" replace class="redeem__button"
+        >Voltar ao início</NuxtLink
+      >
     </template>
   </div>
 </template>

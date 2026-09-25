@@ -5,6 +5,22 @@ import { defineNuxtConfig } from 'nuxt/config';
 export default defineNuxtConfig({
   workspaceDir: '../../',
   devtools: { enabled: true },
+  routeRules: {
+    // SPA: o servidor entrega na hora o mesmo shell (com o skeleton de
+    // app/spa-loading-template.html) em vez de segurar o HTML até a API
+    // responder — em rede lenta isso deixava a tela branca por vários
+    // segundos. Os dados são por usuário e vêm do token no cookie, então não
+    // há ganho de SEO/SSR aqui. Feito por routeRules e não com `ssr: false`
+    // global porque este quebra o `nuxt dev` no Nuxt 4.4 ("No entry found in
+    // rollupOptions.input").
+    '/**': { ssr: false },
+    // Antigas rotas de cada aba, que viraram estados dentro de "/" e "/admin".
+    // Mantidas como redirect para links salvos e atalhos do PWA não quebrarem.
+    '/historico': { redirect: '/' },
+    '/loja': { redirect: '/' },
+    '/perfil': { redirect: '/' },
+    '/generate': { redirect: '/admin' },
+  },
   devServer: {
     host: 'localhost',
     port: 4200,
@@ -20,7 +36,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
+      apiBaseUrl:
+        process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
       googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID || '',
       appleClientId: process.env.NUXT_PUBLIC_APPLE_CLIENT_ID || '',
     },
@@ -33,8 +50,7 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#f2f0ef' },
         {
           name: 'viewport',
-          content:
-            'width=device-width, initial-scale=1, viewport-fit=cover',
+          content: 'width=device-width, initial-scale=1, viewport-fit=cover',
         },
         // iOS não lê o manifest para decidir o modo de exibição — precisa
         // dessas meta tags para abrir em standalone ao instalar via Safari.
@@ -94,16 +110,17 @@ export default defineNuxtConfig({
     },
     workbox: {
       globPatterns: ['**/*.{js,css,png,svg,ico}'],
-      // O @vite-pwa/nuxt define um navigateFallback: '/' por padrão (pensado
-      // para SPA), o que registraria uma NavigationRoute cobrindo TODA
-      // navegação antes da regra customizada abaixo — e como somos SSR, não
-      // existe um "/" estático precacheado para essa rota servir. Desliga o
-      // fallback padrão para a regra NetworkFirst de fato ser usada.
+      // O @vite-pwa/nuxt define um navigateFallback: '/' por padrão, que
+      // registraria uma NavigationRoute cobrindo TODA navegação antes da
+      // regra customizada abaixo — mas o shell é servido pelo servidor Nitro
+      // (com o runtimeConfig do ambiente), então não existe um "/" estático
+      // precacheado para essa rota servir. Desliga o fallback padrão para a
+      // regra NetworkFirst de fato ser usada.
       navigateFallback: null,
       runtimeCaching: [
-        // Permite reabrir offline uma página já visitada antes (a app é
-        // renderizada no servidor, então não há um único "index.html"
-        // estático para usar como fallback universal).
+        // Permite reabrir offline um endereço já visitado antes. O shell é o
+        // mesmo para todo usuário (os dados vêm da API depois), então é
+        // seguro guardá-lo em cache.
         {
           urlPattern: ({ request }) => request.mode === 'navigate',
           handler: 'NetworkFirst',
@@ -130,10 +147,10 @@ export default defineNuxtConfig({
       ],
     },
     devOptions: {
-      // Em dev, o vite-pwa registra um SW que precacheia a página atual
-      // (inclusive o "/", que agora é SSR autenticado e por usuário) — isso
-      // fazia o service worker servir o cartão de um usuário antigo para
-      // qualquer sessão depois, ignorando login/logout. O comportamento de
+      // Em dev, o vite-pwa registra um SW que precacheia a página atual — na
+      // época em que o "/" era SSR autenticado, isso fazia o service worker
+      // servir o cartão de um usuário antigo para qualquer sessão depois,
+      // ignorando login/logout. O comportamento de
       // PWA em produção (manifest + workbox acima) não usa esse modo dev e
       // não é afetado; para testar instalação/offline localmente, rode
       // `nx build` + preview em vez do dev server.

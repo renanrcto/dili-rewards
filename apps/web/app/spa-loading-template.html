@@ -1,0 +1,82 @@
+<!--
+  Skeleton da abertura do app: é o que o servidor entrega na hora, antes do
+  JavaScript carregar (o Nuxt troca pelo app ao montar). HTML e CSS puros, com
+  as cores escritas por extenso porque os tokens (_tokens.scss) ainda não
+  existem nesse momento. Mesmo visual do componente SkeletonBlock.
+-->
+<div class="dili-boot" aria-busy="true" aria-label="Carregando">
+  <img
+    class="dili-boot__logo"
+    src="/images/logo.svg"
+    alt=""
+    width="128"
+    height="95"
+  />
+  <span class="dili-boot__block" style="width: 9rem; height: 1.1rem"></span>
+  <span class="dili-boot__block" style="width: 12rem; height: 1.6rem"></span>
+  <span class="dili-boot__block dili-boot__card"></span>
+</div>
+
+<style>
+  .dili-boot {
+    min-height: 100dvh;
+    max-width: 30rem;
+    margin: 0 auto;
+    padding: 1.75rem 1.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: #f2f0ef;
+    box-sizing: border-box;
+  }
+
+  .dili-boot__logo {
+    width: 4.5rem;
+    height: auto;
+    margin-bottom: 1.25rem;
+  }
+
+  .dili-boot__block {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    max-width: 100%;
+    border-radius: 0.5rem;
+    background: rgb(40 55 74 / 9%);
+  }
+
+  .dili-boot__block::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(248 246 245 / 70%),
+      transparent
+    );
+    animation: dili-boot-shimmer 1.4s ease-in-out infinite;
+  }
+
+  .dili-boot__card {
+    width: min(21rem, 84vw);
+    aspect-ratio: 1.6 / 1;
+    margin: 3.5rem auto 0;
+    border-radius: 1.4rem;
+    transform: rotate(7deg);
+  }
+
+  @keyframes dili-boot-shimmer {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dili-boot__block::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+</style>

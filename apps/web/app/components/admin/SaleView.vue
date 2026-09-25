@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { renderSVG } from 'uqr';
+import type { AdminTab } from '~/utils/tabs';
 
-definePageMeta({ middleware: ['auth', 'admin'] });
+const emit = defineEmits<{ navigate: [tab: AdminTab] }>();
 
 interface ActiveRescue {
   code: string;
@@ -69,10 +70,11 @@ const countdown = computed(() => {
 // (dilirewards.com.br em produção).
 const qrSvg = computed(() =>
   rescue.value
-    ? renderSVG(
-        `${requestUrl.origin}/resgatar?code=${rescue.value.code}`,
-        { border: 2, blackColor: '#28374a', whiteColor: '#f8f6f5' },
-      )
+    ? renderSVG(`${requestUrl.origin}/resgatar?code=${rescue.value.code}`, {
+        border: 2,
+        blackColor: '#28374a',
+        whiteColor: '#f8f6f5',
+      })
     : '',
 );
 
@@ -132,9 +134,14 @@ onBeforeUnmount(stopTimer);
 <template>
   <div class="sale">
     <header class="sale__header">
-      <NuxtLink v-if="isSuperAdmin" to="/admin" class="sale__back">
+      <button
+        v-if="isSuperAdmin"
+        type="button"
+        class="sale__back"
+        @click="emit('navigate', 'dashboard')"
+      >
         ← Painel
-      </NuxtLink>
+      </button>
       <img
         src="/images/logo.svg"
         alt="Dili Cafés Especiais"
@@ -247,6 +254,10 @@ onBeforeUnmount(stopTimer);
     font-weight: 700;
     color: var(--color-maroon);
     text-decoration: none;
+    padding: 0;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
   }
 
   &__logo {

@@ -1,11 +1,14 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth', bottomMenu: true });
-
 const { account, logout } = useAuth();
 const { getTier } = usePoints();
 
 // Mesma chave da home: o cache é compartilhado e invalidado no resgate.
-const { data: tierStatus } = await useAsyncData('points-tier', getTier);
+const { data: tierStatus, error: tierError } = useAsyncData(
+  'points-tier',
+  getTier,
+);
+
+const isTierLoading = computed(() => !tierStatus.value && !tierError.value);
 
 // Na página de perfil o nome aparece sempre completo.
 const displayName = computed(() =>
@@ -80,7 +83,21 @@ async function handleLogout() {
       <h1 class="profile__title">Perfil</h1>
     </header>
 
-    <dl class="profile__info">
+    <!-- A conta ainda pode estar chegando (/auth/me) ao abrir o app. -->
+    <dl v-if="!account" class="profile__info" aria-busy="true">
+      <div
+        v-for="label in ['Nome', 'E-mail', 'Membro desde']"
+        :key="label"
+        class="profile__row"
+      >
+        <dt class="profile__label">{{ label }}</dt>
+        <dd class="profile__value">
+          <SkeletonBlock width="60%" height="1.2rem" />
+        </dd>
+      </div>
+    </dl>
+
+    <dl v-else class="profile__info">
       <div class="profile__row">
         <dt class="profile__label">Nome</dt>
         <dd class="profile__value">{{ displayName }}</dd>
@@ -99,8 +116,18 @@ async function handleLogout() {
       </div>
     </dl>
 
+    <section v-if="isTierLoading" class="profile__tier" aria-busy="true">
+      <div class="profile__tier-header">
+        <h2 class="profile__label">Seu nível</h2>
+        <SkeletonBlock width="7rem" height="1.3rem" />
+      </div>
+      <SkeletonBlock height="0.6rem" radius="999px" />
+      <SkeletonBlock width="90%" height="1rem" />
+      <SkeletonBlock width="70%" height="1rem" />
+    </section>
+
     <section
-      v-if="tierStatus"
+      v-else-if="tierStatus"
       class="profile__tier"
       aria-labelledby="profile-tier-title"
     >

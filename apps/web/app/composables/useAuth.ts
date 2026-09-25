@@ -19,12 +19,16 @@ interface AuthApiResponse {
 
 const TOKEN_COOKIE_NAME = 'dili_access_token';
 
+// Um único GET /auth/me em andamento por vez — o middleware de auth e o de
+// admin podem pedir a conta na mesma navegação.
+let currentUserRequest: Promise<AuthAccount | null> | null = null;
+
 export function extractErrorMessage(error: unknown, fallback: string): string {
   const message = (
     error as { data?: { message?: string | string[] } } | undefined
   )?.data?.message;
   if (!message) return fallback;
-  return Array.isArray(message) ? message[0] ?? fallback : message;
+  return Array.isArray(message) ? (message[0] ?? fallback) : message;
 }
 
 export function useAuth() {
@@ -85,7 +89,14 @@ export function useAuth() {
    * porque o `account` (useState) não sobrevive a um novo carregamento de
    * página/SSR, só o cookie do token sobrevive.
    */
-  async function fetchCurrentUser(): Promise<AuthAccount | null> {
+  function fetchCurrentUser(): Promise<AuthAccount | null> {
+    currentUserRequest ??= requestCurrentUser().finally(() => {
+      currentUserRequest = null;
+    });
+    return currentUserRequest;
+  }
+
+  async function requestCurrentUser(): Promise<AuthAccount | null> {
     if (!token.value) {
       account.value = null;
       return null;

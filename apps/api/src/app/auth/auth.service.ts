@@ -15,7 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './types/jwt-payload.interface';
 
-const BCRYPT_SALT_ROUNDS = 12;
+export const BCRYPT_SALT_ROUNDS = 12;
 const APPLE_ISSUER = 'https://appleid.apple.com';
 const APPLE_JWKS_URI = 'https://appleid.apple.com/auth/keys';
 
@@ -194,7 +194,7 @@ export class AuthService {
     });
   }
 
-  private buildAuthResult(user: User): AuthResult {
+  buildAuthResult(user: User): AuthResult {
     const payload: JwtPayload = { sub: user.id, email: user.email };
     return {
       accessToken: this.jwtService.sign(payload),

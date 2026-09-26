@@ -97,6 +97,13 @@ async function handleSubmit() {
         />
       </label>
 
+      <NuxtLink
+        :to="{ path: '/esqueci-senha', query: email ? { email } : {} }"
+        class="auth__forgot"
+      >
+        Esqueci minha senha
+      </NuxtLink>
+
       <p v-if="errorMessage" class="auth__error" role="alert">
         {{ errorMessage }}
       </p>
@@ -214,6 +221,14 @@ async function handleSubmit() {
     &:focus-visible {
       border-color: var(--color-navy);
     }
+  }
+
+  &__forgot {
+    align-self: flex-end;
+    margin-top: -0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-maroon);
   }
 
   &__error {

@@ -21,6 +21,10 @@ const isTierLoading = computed(
   () => !tierStatus.value && tierStatusStatus.value !== 'error',
 );
 
+// O super-admin também usa a área do cliente; no lugar do nível, o header
+// leva para o painel — no PWA não há barra de endereço para trocar de rota.
+const isSuperAdmin = computed(() => account.value?.role === 'super_admin');
+
 // Se o nível não carregar, mostra standard em vez de esconder o selo.
 const tier = computed(() => tierStatus.value?.tier ?? 'standard');
 
@@ -39,7 +43,15 @@ const formattedPoints = computed(() =>
         width="128"
         height="95"
       />
-      <div v-if="isTierLoading" class="home__tier home__tier--loading">
+      <NuxtLink v-if="isSuperAdmin" to="/admin" class="home__admin-link">
+        <span>área</span>
+        <span>admin</span>
+      </NuxtLink>
+      <!-- Sem a conta ainda não dá para saber o role: skeleton até chegar. -->
+      <div
+        v-else-if="!account || isTierLoading"
+        class="home__tier home__tier--loading"
+      >
         <SkeletonBlock width="3.5rem" height="0.95rem" />
         <SkeletonBlock width="4.5rem" height="0.95rem" />
       </div>
@@ -130,6 +142,21 @@ const formattedPoints = computed(() =>
     &--black {
       background-image: var(--tier-black);
     }
+  }
+
+  &__admin-link {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    margin: 0.5rem 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    color: var(--color-maroon);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
   }
 
   &__greeting {

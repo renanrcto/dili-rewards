@@ -23,6 +23,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || user.id !== payload.sub) {
       throw new UnauthorizedException();
     }
+    // Trocar a senha encerra as sessões abertas em outros aparelhos. O `iat`
+    // tem precisão de segundos, então a comparação também é em segundos —
+    // senão o token emitido logo após a troca, no mesmo segundo, cairia.
+    if (
+      user.passwordChangedAt &&
+      (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
+    ) {
+      throw new UnauthorizedException();
+    }
     return user;
   }
 }

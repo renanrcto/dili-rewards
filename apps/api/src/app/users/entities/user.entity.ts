@@ -77,6 +77,11 @@ export class User {
   @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
   emailVerifiedAt!: Date | null;
 
+  // Tokens de sessão emitidos antes desta data deixam de valer (ver
+  // JwtStrategy). Null = senha nunca trocada.
+  @Column({ name: 'password_changed_at', type: 'timestamptz', nullable: true })
+  passwordChangedAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

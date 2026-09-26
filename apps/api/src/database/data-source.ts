@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import { PasswordResetToken } from '../app/auth/entities/password-reset-token.entity';
 import { PointsConversionRate } from '../app/points/entities/points-conversion-rate.entity';
 import { RescuePoint } from '../app/points/entities/rescue-point.entity';
 import { UserPoints } from '../app/points/entities/user-points.entity';
@@ -22,7 +23,14 @@ export default new DataSource({
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'dili_rewards',
-  entities: [User, UserPoints, PointsConversionRate, RescuePoint, UserTier],
+  entities: [
+    User,
+    UserPoints,
+    PointsConversionRate,
+    RescuePoint,
+    UserTier,
+    PasswordResetToken,
+  ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,
 });

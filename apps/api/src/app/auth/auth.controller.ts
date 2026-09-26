@@ -11,14 +11,20 @@ import type { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
 import type { AuthResult, PublicUser } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PasswordResetService } from './password-reset.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly passwordResetService: PasswordResetService,
+  ) {}
 
   @Post('register')
   register(@Body() dto: RegisterDto): Promise<AuthResult> {
@@ -35,6 +41,24 @@ export class AuthController {
   @Post('google')
   loginWithGoogle(@Body() dto: SocialLoginDto): Promise<AuthResult> {
     return this.authService.loginWithGoogle(dto.idToken);
+  }
+
+  // Sempre 204, exista ou não uma conta com o e-mail informado.
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto): void {
+    this.passwordResetService.requestReset(dto.email);
+  }
+
+  // Troca a senha e já devolve uma sessão, como o login.
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<AuthResult> {
+    const user = await this.passwordResetService.resetPassword(
+      dto.token,
+      dto.password,
+    );
+    return this.authService.buildAuthResult(user);
   }
 
   // Login com Apple desativado — por enquanto só login local e Google.

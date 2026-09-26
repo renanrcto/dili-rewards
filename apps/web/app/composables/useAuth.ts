@@ -76,6 +76,21 @@ export function useAuth() {
     return applyAuthResponse(await post('/auth/apple', { idToken }));
   }
 
+  // A API responde igual exista ou não uma conta com o e-mail.
+  async function requestPasswordReset(email: string): Promise<void> {
+    await $fetch(`${config.public.apiBaseUrl}/auth/forgot-password`, {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  async function resetPassword(input: {
+    token: string;
+    password: string;
+  }): Promise<AuthAccount> {
+    return applyAuthResponse(await post('/auth/reset-password', input));
+  }
+
   function logout() {
     token.value = null;
     account.value = null;
@@ -122,6 +137,8 @@ export function useAuth() {
     login,
     loginWithGoogle,
     loginWithApple,
+    requestPasswordReset,
+    resetPassword,
     logout,
     fetchCurrentUser,
   };

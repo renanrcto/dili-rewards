@@ -5,6 +5,7 @@ import { buildDatabaseConfig } from '../config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { LogsModule } from './logs/logs.module';
 import { PointsModule } from './points/points.module';
 import { UsersModule } from './users/users.module';
 
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
       inject: [ConfigService],
       useFactory: buildDatabaseConfig,
     }),
+    LogsModule,
     UsersModule,
     AuthModule,
     PointsModule,

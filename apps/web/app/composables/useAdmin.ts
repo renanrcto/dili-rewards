@@ -23,6 +23,41 @@ export interface ConversionRate {
   expiresAt: string | null;
 }
 
+export type LogLevel = 'warn' | 'error';
+
+export interface LogItem {
+  id: string;
+  level: LogLevel;
+  // Classe que gerou o log ou 'HTTP' para requisições com erro.
+  context: string | null;
+  message: string;
+  stack: string | null;
+  method: string | null;
+  path: string | null;
+  statusCode: number | null;
+  userId: string | null;
+  userEmail: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedLogs {
+  items: LogItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface LogsFilter {
+  // Dias YYYY-MM-DD no fuso da loja, inclusivos.
+  from?: string;
+  to?: string;
+  level?: LogLevel;
+  page?: number;
+}
+
 /** Chamadas do painel gerencial (somente super-admin). */
 export function useAdmin() {
   const config = useRuntimeConfig();
@@ -71,5 +106,17 @@ export function useAdmin() {
     );
   }
 
-  return { getDailyPoints, getRates, createRate, deactivateRate };
+  /** Warnings e erros da API, mais recentes primeiro. */
+  function getLogs(filter: LogsFilter): Promise<PaginatedLogs> {
+    // Remove os filtros vazios para não mandar `level=` na query.
+    const query = Object.fromEntries(
+      Object.entries(filter).filter(([, value]) => value),
+    );
+    return $fetch<PaginatedLogs>(`${config.public.apiBaseUrl}/admin/logs`, {
+      headers: authHeaders(),
+      query,
+    });
+  }
+
+  return { getDailyPoints, getRates, createRate, deactivateRate, getLogs };
 }

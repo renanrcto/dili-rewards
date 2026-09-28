@@ -2,6 +2,7 @@ import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { PasswordResetToken } from '../app/auth/entities/password-reset-token.entity';
+import { AppLog } from '../app/logs/entities/app-log.entity';
 import { PointsConversionRate } from '../app/points/entities/points-conversion-rate.entity';
 import { RescuePoint } from '../app/points/entities/rescue-point.entity';
 import { UserPoints } from '../app/points/entities/user-points.entity';
@@ -30,6 +31,7 @@ export default new DataSource({
     RescuePoint,
     UserTier,
     PasswordResetToken,
+    AppLog,
   ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,

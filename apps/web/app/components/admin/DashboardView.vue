@@ -151,7 +151,55 @@ async function handleEndBoost(rate: ConversionRate) {
   }
 }
 
+// ---- Menu (hambúrguer) ----
+
+const isMenuOpen = ref(false);
+const menuRef = ref<HTMLElement | null>(null);
+const menuToggleRef = ref<HTMLButtonElement | null>(null);
+
+function handleDocumentPointerDown(event: PointerEvent) {
+  if (!menuRef.value?.contains(event.target as Node)) {
+    isMenuOpen.value = false;
+  }
+}
+
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    isMenuOpen.value = false;
+    menuToggleRef.value?.focus();
+  }
+}
+
+// Os listeners só existem com o menu aberto: fora dele não há o que fechar.
+watch(isMenuOpen, (open) => {
+  if (open) {
+    document.addEventListener('pointerdown', handleDocumentPointerDown);
+    document.addEventListener('keydown', handleDocumentKeydown);
+  } else {
+    document.removeEventListener('pointerdown', handleDocumentPointerDown);
+    document.removeEventListener('keydown', handleDocumentKeydown);
+  }
+});
+
+// A view fica no KeepAlive: ao trocar para a venda, o menu não pode ficar
+// aberto (nem com os listeners ativos) esperando a volta.
+onDeactivated(() => {
+  isMenuOpen.value = false;
+});
+// Ao sair da rota (ex.: para /logs) o watch já foi parado, então os
+// listeners saem aqui direto.
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown);
+  document.removeEventListener('keydown', handleDocumentKeydown);
+});
+
+function handleMenuNavigate() {
+  isMenuOpen.value = false;
+  emit('navigate', 'sale');
+}
+
 async function handleLogout() {
+  isMenuOpen.value = false;
   logout();
   await navigateTo('/login', { replace: true });
 }
@@ -171,18 +219,48 @@ async function handleLogout() {
         <h1 class="panel__title">Painel Dili Rewards</h1>
         <p class="panel__subtitle">Gestão do programa de pontos</p>
       </div>
-      <nav class="panel__actions">
+      <div ref="menuRef" class="panel__menu">
         <button
+          ref="menuToggleRef"
           type="button"
-          class="panel__button panel__button--primary"
-          @click="emit('navigate', 'sale')"
+          class="panel__menu-toggle"
+          aria-label="Menu"
+          aria-controls="panel-menu"
+          :aria-expanded="isMenuOpen"
+          @click="isMenuOpen = !isMenuOpen"
         >
-          Nova venda
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <path
+              v-if="isMenuOpen"
+              d="M6 6l12 12M18 6L6 18"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              v-else
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
         </button>
-        <button type="button" class="panel__button" @click="handleLogout">
-          Sair
-        </button>
-      </nav>
+
+        <nav v-show="isMenuOpen" id="panel-menu" class="panel__menu-list">
+          <button
+            type="button"
+            class="panel__menu-item"
+            @click="handleMenuNavigate"
+          >
+            Nova venda
+          </button>
+          <NuxtLink to="/logs" class="panel__menu-item">Logs</NuxtLink>
+          <button type="button" class="panel__menu-item" @click="handleLogout">
+            Sair
+          </button>
+        </nav>
+      </div>
     </header>
 
     <section class="panel__card" aria-labelledby="daily-title">
@@ -479,9 +557,71 @@ async function handleLogout() {
     text-transform: uppercase;
   }
 
-  &__actions {
+  &__menu {
+    position: relative;
+  }
+
+  &__menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-navy);
+    background: transparent;
+    color: var(--color-navy);
+    cursor: pointer;
+
+    &[aria-expanded='true'] {
+      background: var(--color-navy);
+      color: var(--color-cream-high);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-maroon);
+      outline-offset: 3px;
+    }
+  }
+
+  &__menu-list {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 10;
+    min-width: 12rem;
+    padding: 0.4rem;
     display: flex;
-    gap: 0.5rem;
+    flex-direction: column;
+    border-radius: 1rem;
+    background: var(--color-cream-high);
+    box-shadow: 0 0.75rem 2rem var(--color-navy-soft);
+  }
+
+  &__menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 0.7rem;
+    background: none;
+    color: var(--color-navy);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-navy-soft);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-maroon);
+      outline-offset: -2px;
+    }
   }
 
   &__button {

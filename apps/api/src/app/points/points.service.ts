@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { STORE_TIME_ZONE } from '../../config/store.config';
 import { ConversionRatesService } from './conversion-rates.service';
 import { CreateRescueDto } from './dto/create-rescue.dto';
 import { ListPointsQueryDto } from './dto/list-points-query.dto';
@@ -48,9 +49,6 @@ export interface DailyPointsReport {
   items: DailyPointsItem[];
   totals: { credits: number; purchaseAmount: number; points: number };
 }
-
-// Fuso da loja: define onde começa e termina "o dia" do painel.
-const STORE_TIME_ZONE = 'America/Sao_Paulo';
 
 export interface PaginatedPointsHistory {
   items: PointsHistoryItem[];

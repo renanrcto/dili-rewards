@@ -41,9 +41,12 @@ export class MailService {
 
   async send(message: MailMessage): Promise<void> {
     if (!this.transporter) {
+      // O aviso vai para a tabela de logs; o conteúdo, não — ele pode ter
+      // o link de redefinição de senha, então fica só no console.
       this.logger.warn(
-        `SMTP não configurado — e-mail para ${message.to} não enviado:\n${message.text}`,
+        `SMTP não configurado — e-mail para ${message.to} não enviado`,
       );
+      this.logger.log(message.text);
       return;
     }
 

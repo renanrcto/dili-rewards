@@ -5,7 +5,6 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -16,6 +15,7 @@ import {
   Min,
 } from 'class-validator';
 import { ProductStatus, ProductTier } from '../entities/product.entity';
+import { MAX_CONVERSION_RATE, MIN_CONVERSION_RATE } from '../product-pricing';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -50,10 +50,17 @@ export class UpdateProductDto {
   imageUrl?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100_000_000)
-  points?: number;
+  @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
+  @Min(0.01)
+  @Max(99_999_999.99)
+  finalPrice?: number;
+
+  // Em % do preço final (5 = 5%).
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
+  @Min(MIN_CONVERSION_RATE)
+  @Max(MAX_CONVERSION_RATE)
+  conversionRate?: number;
 
   @IsOptional()
   @IsEnum(ProductStatus)
@@ -64,16 +71,10 @@ export class UpdateProductDto {
   allowsPartialPoints?: boolean;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100_000_000)
-  partialPoints?: number | null;
-
-  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
   @Min(0.01)
   @Max(99_999_999.99)
-  partialPrice?: number | null;
+  cost?: number | null;
 
   @IsOptional()
   @IsArray()

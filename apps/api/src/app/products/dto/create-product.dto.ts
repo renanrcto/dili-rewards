@@ -5,7 +5,6 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -16,12 +15,14 @@ import {
   Min,
 } from 'class-validator';
 import { ProductStatus, ProductTier } from '../entities/product.entity';
+import { MAX_CONVERSION_RATE, MIN_CONVERSION_RATE } from '../product-pricing';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
-// Coerência entre pontos e troca parcial é validada no ProductsService, que
-// enxerga o produto inteiro (inclusive no PATCH).
+// Pontos e troca parcial não vêm do formulário: o ProductsService calcula a
+// partir de preço final, taxa e custo, e valida o produto inteiro (inclusive
+// no PATCH).
 export class CreateProductDto {
   @Transform(trim)
   @IsString()
@@ -46,10 +47,16 @@ export class CreateProductDto {
   @MaxLength(1024)
   imageUrl!: string;
 
-  @IsInt()
-  @Min(1)
-  @Max(100_000_000)
-  points!: number;
+  @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
+  @Min(0.01)
+  @Max(99_999_999.99)
+  finalPrice!: number;
+
+  // Em % do preço final (5 = 5%).
+  @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
+  @Min(MIN_CONVERSION_RATE)
+  @Max(MAX_CONVERSION_RATE)
+  conversionRate!: number;
 
   @IsOptional()
   @IsEnum(ProductStatus)
@@ -59,18 +66,12 @@ export class CreateProductDto {
   @IsBoolean()
   allowsPartialPoints?: boolean;
 
-  // Obrigatórios só com troca parcial; sem ela são ignorados.
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100_000_000)
-  partialPoints?: number | null;
-
+  // Obrigatório só com troca parcial; sem ela é ignorado.
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
   @Min(0.01)
   @Max(99_999_999.99)
-  partialPrice?: number | null;
+  cost?: number | null;
 
   @IsArray()
   @ArrayMinSize(1, { message: 'Escolha pelo menos um nível.' })

@@ -19,6 +19,7 @@ const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 });
+const rate = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 
 // Vem do cadastro/edição; mostrada só nesta visita à lista.
 const flash = useState<string>('products-flash', () => '');
@@ -139,6 +140,13 @@ function tiersLabel(tiers: ProductTier[]): string {
                   <template v-if="product.allowsPartialPoints">
                     ou {{ integer.format(product.partialPoints!) }} pontos +
                     {{ currency.format(product.partialPrice!) }}
+                  </template>
+                </span>
+                <span class="products__detail">
+                  {{ currency.format(product.finalPrice) }} ·
+                  {{ rate.format(product.conversionRate) }}% em pontos
+                  <template v-if="product.cost !== null">
+                    · custo {{ currency.format(product.cost) }}
                   </template>
                 </span>
                 <span class="products__detail">

@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo"
   },
-  "include": [".nuxt/nuxt.d.ts", "app/**/*", "server/**/*"],
+  "include": [".nuxt/nuxt.d.ts", "app/**/*", "server/**/*", "shared/**/*"],
   "exclude": [
     "out-tsc",
     "dist",

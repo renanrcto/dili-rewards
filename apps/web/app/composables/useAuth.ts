@@ -1,5 +1,11 @@
+import {
+  SESSION_MAX_AGE_SECONDS,
+  TOKEN_COOKIE_NAME,
+  type AuthAccountRole,
+} from '#shared/auth';
+
+export type { AuthAccountRole };
 export type AuthAccountProvider = 'local' | 'google' | 'apple';
-export type AuthAccountRole = 'customer' | 'admin' | 'super_admin';
 
 export interface AuthAccount {
   id: string;
@@ -16,8 +22,6 @@ interface AuthApiResponse {
   accessToken: string;
   user: AuthAccount;
 }
-
-const TOKEN_COOKIE_NAME = 'dili_access_token';
 
 // Um único GET /auth/me em andamento por vez — o middleware de auth e o de
 // admin podem pedir a conta na mesma navegação.
@@ -37,7 +41,7 @@ export function useAuth() {
   const token = useCookie<string | null>(TOKEN_COOKIE_NAME, {
     default: () => null,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
 
   function applyAuthResponse(response: AuthApiResponse): AuthAccount {
@@ -66,10 +70,6 @@ export function useAuth() {
     password: string;
   }): Promise<AuthAccount> {
     return applyAuthResponse(await post('/auth/login', input));
-  }
-
-  async function loginWithGoogle(idToken: string): Promise<AuthAccount> {
-    return applyAuthResponse(await post('/auth/google', { idToken }));
   }
 
   async function loginWithApple(idToken: string): Promise<AuthAccount> {
@@ -135,7 +135,6 @@ export function useAuth() {
     token,
     register,
     login,
-    loginWithGoogle,
     loginWithApple,
     requestPasswordReset,
     resetPassword,

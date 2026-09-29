@@ -1,3 +1,9 @@
+import {
+  GOOGLE_CALLBACK_PATH,
+  GOOGLE_LOGIN_COOKIE_NAME,
+  type PendingGoogleLogin,
+} from '#shared/auth';
+
 declare global {
   interface Window {
     google?: {
@@ -5,9 +11,14 @@ declare global {
         id: {
           initialize(options: {
             client_id: string;
-            callback: (response: { credential: string }) => void;
+            ux_mode: 'redirect';
+            login_uri: string;
+            nonce: string;
           }): void;
-          renderButton(parent: HTMLElement, options: Record<string, unknown>): void;
+          renderButton(
+            parent: HTMLElement,
+            options: Record<string, unknown>,
+          ): void;
         };
       };
     };
@@ -36,17 +47,35 @@ function loadGoogleScript(): Promise<void> {
 
 /**
  * Renderiza o botão oficial do Google Identity Services dentro de
- * `container` — o próprio Google decide a UI do botão, então em caso de
- * sucesso o `callback` do `initialize` já recebe o id_token pronto para
- * mandar pra API (POST /auth/google).
+ * `container`, em modo redirect: o usuário sai para o Google e volta por um
+ * POST com o id_token em GOOGLE_CALLBACK_PATH, tratado pelo servidor Nitro
+ * (server/routes/auth/google/callback.post.ts), que abre a sessão e manda
+ * para a home.
+ *
+ * Não usamos o modo popup (o padrão) porque no app instalado no iPhone e nos
+ * navegadores internos de Instagram/WhatsApp o popup não consegue devolver o
+ * token para a janela do app — o cliente fazia o login e ficava numa tela
+ * branca do Google.
  */
 export function useGoogleAuth() {
   const config = useRuntimeConfig();
-  const { loginWithGoogle } = useAuth();
+  const route = useRoute();
+  // SameSite=None: o Google volta com um POST vindo de outro site, e cookies
+  // Lax não vão junto nesse caso.
+  const pendingLogin = useCookie<PendingGoogleLogin | null>(
+    GOOGLE_LOGIN_COOKIE_NAME,
+    { sameSite: 'none', secure: true, maxAge: 60 * 30 },
+  );
+
+  // Mensagem deixada pelo callback quando o login falha.
+  const redirectError = computed(() => {
+    const value = route.query.googleError;
+    return typeof value === 'string' ? value : '';
+  });
 
   async function renderButton(
     container: HTMLElement,
-    onSuccess: (user: AuthAccount) => void,
+    redirect: string | null,
     onError: (message: string) => void,
   ): Promise<void> {
     const clientId = config.public.googleClientId as string;
@@ -66,18 +95,16 @@ export function useGoogleAuth() {
       return;
     }
 
+    // O nonce vai dentro do id_token e é conferido com o cookie no callback:
+    // garante que o POST veio de um login iniciado neste navegador.
+    const nonce = crypto.randomUUID();
+    pendingLogin.value = { nonce, redirect };
+
     window.google!.accounts.id.initialize({
       client_id: clientId,
-      callback: async (response) => {
-        try {
-          const user = await loginWithGoogle(response.credential);
-          onSuccess(user);
-        } catch (error) {
-          onError(
-            extractErrorMessage(error, 'Não foi possível entrar com o Google.'),
-          );
-        }
-      },
+      ux_mode: 'redirect',
+      login_uri: `${window.location.origin}${GOOGLE_CALLBACK_PATH}`,
+      nonce,
     });
 
     window.google!.accounts.id.renderButton(container, {
@@ -91,5 +118,5 @@ export function useGoogleAuth() {
     });
   }
 
-  return { renderButton };
+  return { renderButton, redirectError };
 }

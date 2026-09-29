@@ -10,6 +10,7 @@ import { R2StorageService } from '../storage/r2-storage.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product, ProductStatus } from './entities/product.entity';
+import { calculatePartial, calculatePoints } from './product-pricing';
 
 // Formatos aceitos, reconhecidos pelos primeiros bytes do arquivo — o
 // mimetype enviado pelo navegador não é confiável.
@@ -51,10 +52,14 @@ export type CatalogProduct = Pick<
   | 'allowedTiers'
 >;
 
-type Pricing = Pick<
+// O que o admin informa; o resto do preço é calculado por buildPricing.
+type PricingInput = Pick<
   Product,
-  'points' | 'allowsPartialPoints' | 'partialPoints' | 'partialPrice'
+  'finalPrice' | 'conversionRate' | 'allowsPartialPoints' | 'cost'
 >;
+
+type Pricing = PricingInput &
+  Pick<Product, 'points' | 'partialPoints' | 'partialPrice'>;
 
 @Injectable()
 export class ProductsService {
@@ -139,11 +144,11 @@ export class ProductsService {
       imageUrl: dto.imageUrl,
       status: dto.status ?? ProductStatus.ACTIVE,
       allowedTiers: dto.allowedTiers,
-      ...normalizePricing({
-        points: dto.points,
+      ...buildPricing({
+        finalPrice: dto.finalPrice,
+        conversionRate: dto.conversionRate,
         allowsPartialPoints: dto.allowsPartialPoints ?? false,
-        partialPoints: dto.partialPoints ?? null,
-        partialPrice: dto.partialPrice ?? null,
+        cost: dto.cost ?? null,
       }),
     });
     return this.productsRepository.save(product);
@@ -156,8 +161,8 @@ export class ProductsService {
       this.assertOwnImage(dto.imageUrl);
     }
 
-    // A troca parcial é validada com o produto já atualizado: o PATCH pode
-    // mudar só os pontos e deixar o parcial acima do total, por exemplo.
+    // Os pontos são recalculados com o produto já atualizado: o PATCH pode
+    // mudar só a taxa, por exemplo, e a troca parcial acompanha.
     Object.assign(product, {
       name: dto.name ?? product.name,
       category: dto.category ?? product.category,
@@ -165,18 +170,12 @@ export class ProductsService {
       imageUrl: dto.imageUrl ?? product.imageUrl,
       status: dto.status ?? product.status,
       allowedTiers: dto.allowedTiers ?? product.allowedTiers,
-      ...normalizePricing({
-        points: dto.points ?? product.points,
+      ...buildPricing({
+        finalPrice: dto.finalPrice ?? product.finalPrice,
+        conversionRate: dto.conversionRate ?? product.conversionRate,
         allowsPartialPoints:
           dto.allowsPartialPoints ?? product.allowsPartialPoints,
-        partialPoints:
-          dto.partialPoints !== undefined
-            ? dto.partialPoints
-            : product.partialPoints,
-        partialPrice:
-          dto.partialPrice !== undefined
-            ? dto.partialPrice
-            : product.partialPrice,
+        cost: dto.cost !== undefined ? dto.cost : product.cost,
       }),
     });
     const saved = await this.productsRepository.save(product);
@@ -200,22 +199,36 @@ export class ProductsService {
   }
 }
 
-// Sem troca parcial, pontos e preço parciais são descartados; com ela, os
-// dois são obrigatórios e o parcial precisa ser menor que o total. Mesmas
-// regras do CHK_products_partial, com mensagens para o formulário.
-function normalizePricing(pricing: Pricing): Pricing {
-  if (!pricing.allowsPartialPoints) {
-    return { ...pricing, partialPoints: null, partialPrice: null };
-  }
-  if (pricing.partialPoints === null || pricing.partialPrice === null) {
+// Calcula pontos e troca parcial a partir do que o admin informou. Sem
+// troca parcial, custo e valores parciais ficam NULL; com ela, o custo é
+// obrigatório. Mesmas regras dos CHKs da tabela, com mensagens para o
+// formulário.
+function buildPricing(input: PricingInput): Pricing {
+  const points = calculatePoints(input.finalPrice, input.conversionRate);
+  if (points < 1) {
     throw new BadRequestException(
-      'Informe os pontos e o preço da troca parcial.',
+      'O preço final é baixo demais para gerar pontos com essa taxa.',
     );
   }
-  if (pricing.partialPoints >= pricing.points) {
+  if (!input.allowsPartialPoints) {
+    return {
+      ...input,
+      cost: null,
+      points,
+      partialPoints: null,
+      partialPrice: null,
+    };
+  }
+  if (input.cost === null) {
     throw new BadRequestException(
-      'Os pontos da troca parcial devem ser menores que os pontos do produto.',
+      'Informe o preço de custo para a troca parcial.',
     );
   }
-  return pricing;
+  const partial = calculatePartial(input.cost, points);
+  if (partial.partialPoints < 1 || partial.partialPoints >= points) {
+    throw new BadRequestException(
+      'O preço final é baixo demais para permitir troca parcial.',
+    );
+  }
+  return { ...input, points, ...partial };
 }

@@ -68,11 +68,17 @@ export interface Product {
   description: string;
   // URL pública da imagem no Cloudflare R2.
   imageUrl: string;
-  // Pontos da troca só com pontos.
+  // Preço de venda (R$) e % dele convertido em pontos (2 a 8).
+  finalPrice: number;
+  conversionRate: number;
+  // Pontos da troca só com pontos, calculados pela API.
   points: number;
   status: ProductStatus;
   allowsPartialPoints: boolean;
-  // Troca parcial: pontos + preço em reais. null sem troca parcial.
+  // Custo (R$), base da troca parcial. null sem troca parcial.
+  cost: number | null;
+  // Troca parcial: pontos + preço em reais, calculados pela API a partir
+  // do custo. null sem troca parcial.
   partialPoints: number | null;
   partialPrice: number | null;
   allowedTiers: ProductTier[];
@@ -80,7 +86,11 @@ export interface Product {
   updatedAt: string;
 }
 
-export type ProductInput = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+// Pontos e valores da troca parcial são calculados pela API.
+export type ProductInput = Omit<
+  Product,
+  'id' | 'createdAt' | 'updatedAt' | 'points' | 'partialPoints' | 'partialPrice'
+>;
 
 /** Chamadas do painel gerencial (somente super-admin). */
 export function useAdmin() {

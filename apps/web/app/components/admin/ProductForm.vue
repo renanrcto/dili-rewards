@@ -5,6 +5,12 @@ import type {
   ProductStatus,
   ProductTier,
 } from '~/composables/useAdmin';
+import {
+  MAX_CONVERSION_RATE,
+  MIN_CONVERSION_RATE,
+  calculatePartial,
+  calculatePoints,
+} from '~/utils/product-pricing';
 
 // Formulário de cadastro/edição de produto da troca de pontos. Sem
 // `product`, cadastra um novo.
@@ -50,20 +56,30 @@ const priceFormat = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+const rateFormat = new Intl.NumberFormat('pt-BR', {
+  maximumFractionDigits: 2,
+});
+const integer = new Intl.NumberFormat('pt-BR');
+const currency = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
 
 const form = reactive({
   name: props.product?.name ?? '',
   category: props.product?.category ?? '',
   description: props.product?.description ?? '',
-  points: (props.product?.points ?? '') as number | '',
+  // Texto para aceitar vírgula como separador decimal.
+  finalPrice:
+    props.product != null ? priceFormat.format(props.product.finalPrice) : '',
+  conversionRate:
+    props.product != null
+      ? rateFormat.format(props.product.conversionRate)
+      : '',
   status: (props.product?.status ?? 'active') as ProductStatus,
   allowsPartialPoints: props.product?.allowsPartialPoints ?? false,
-  partialPoints: (props.product?.partialPoints ?? '') as number | '',
-  // Texto para aceitar vírgula como separador decimal.
-  partialPrice:
-    props.product?.partialPrice != null
-      ? priceFormat.format(props.product.partialPrice)
-      : '',
+  cost:
+    props.product?.cost != null ? priceFormat.format(props.product.cost) : '',
   allowedTiers: [
     ...(props.product?.allowedTiers ?? TIERS.map((tier) => tier.value)),
   ] as ProductTier[],
@@ -123,6 +139,25 @@ function parsePrice(value: string): number {
   return /^\d+(\.\d{1,2})?$/.test(normalized) ? Number(normalized) : NaN;
 }
 
+// Prévia dos pontos com as mesmas contas da API; null enquanto os campos
+// não formam valores válidos.
+const pointsPreview = computed(() => {
+  const finalPrice = parsePrice(form.finalPrice);
+  const conversionRate = parsePrice(form.conversionRate);
+  if (!(finalPrice > 0) || !isValidRate(conversionRate)) return null;
+  return calculatePoints(finalPrice, conversionRate);
+});
+
+const partialPreview = computed(() => {
+  const cost = parsePrice(form.cost);
+  if (pointsPreview.value === null || !(cost > 0)) return null;
+  return calculatePartial(cost, pointsPreview.value);
+});
+
+function isValidRate(rate: number): boolean {
+  return rate >= MIN_CONVERSION_RATE && rate <= MAX_CONVERSION_RATE;
+}
+
 function validate(): string | ProductInput {
   const name = form.name.trim();
   const description = form.description.trim();
@@ -132,24 +167,23 @@ function validate(): string | ProductInput {
   if (!description) return 'Informe a descrição do produto.';
   if (!imagePreview.value) return 'Escolha uma imagem para o produto.';
 
-  const points = Number(form.points);
-  if (!Number.isInteger(points) || points < 1) {
-    return 'Informe os pontos do produto (número inteiro).';
+  const finalPrice = parsePrice(form.finalPrice);
+  if (!(finalPrice > 0)) {
+    return 'Informe o preço final do produto (ex.: 49,90).';
+  }
+  const conversionRate = parsePrice(form.conversionRate);
+  if (!isValidRate(conversionRate)) {
+    return `A taxa de conversão deve ficar entre ${MIN_CONVERSION_RATE}% e ${MAX_CONVERSION_RATE}%.`;
+  }
+  if (!pointsPreview.value) {
+    return 'O preço final é baixo demais para gerar pontos com essa taxa.';
   }
 
-  let partialPoints: number | null = null;
-  let partialPrice: number | null = null;
+  let cost: number | null = null;
   if (form.allowsPartialPoints) {
-    partialPoints = Number(form.partialPoints);
-    if (!Number.isInteger(partialPoints) || partialPoints < 1) {
-      return 'Informe os pontos da troca parcial (número inteiro).';
-    }
-    if (partialPoints >= points) {
-      return 'Os pontos da troca parcial devem ser menores que os pontos do produto.';
-    }
-    partialPrice = parsePrice(form.partialPrice);
-    if (!(partialPrice > 0)) {
-      return 'Informe o preço da troca parcial (ex.: 12,50).';
+    cost = parsePrice(form.cost);
+    if (!(cost > 0)) {
+      return 'Informe o preço de custo para a troca parcial (ex.: 20,00).';
     }
   }
 
@@ -163,11 +197,11 @@ function validate(): string | ProductInput {
     description,
     // Trocado pela URL do upload no envio, quando há imagem nova.
     imageUrl: props.product?.imageUrl ?? '',
-    points,
+    finalPrice,
+    conversionRate,
     status: form.status,
     allowsPartialPoints: form.allowsPartialPoints,
-    partialPoints,
-    partialPrice,
+    cost,
     // Na ordem dos níveis, independente da ordem em que foram marcados.
     allowedTiers: TIERS.map((tier) => tier.value).filter((tier) =>
       form.allowedTiers.includes(tier),
@@ -294,18 +328,38 @@ async function handleSubmit() {
 
     <div class="product-form__fields">
       <label class="product-form__field">
-        <span class="product-form__label">Pontos (troca integral)</span>
+        <span class="product-form__label">Preço final (R$)</span>
         <input
-          v-model.number="form.points"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          step="1"
+          v-model="form.finalPrice"
+          type="text"
+          inputmode="decimal"
           required
+          placeholder="0,00"
           class="product-form__input"
         />
       </label>
+      <label class="product-form__field">
+        <span class="product-form__label">Taxa de conversão (%)</span>
+        <input
+          v-model="form.conversionRate"
+          type="text"
+          inputmode="decimal"
+          required
+          :placeholder="`${MIN_CONVERSION_RATE} a ${MAX_CONVERSION_RATE}`"
+          class="product-form__input"
+        />
+      </label>
+    </div>
 
+    <p class="product-form__hint" aria-live="polite">
+      Troca integral:
+      <strong v-if="pointsPreview">
+        {{ integer.format(pointsPreview) }} pontos
+      </strong>
+      <template v-else>informe o preço final e a taxa</template>
+    </p>
+
+    <div class="product-form__fields">
       <fieldset class="product-form__field product-form__fieldset">
         <legend class="product-form__label">Status</legend>
         <div class="product-form__options">
@@ -326,31 +380,29 @@ async function handleSubmit() {
       Permite troca parcial (pontos + preço)
     </label>
 
-    <div v-if="form.allowsPartialPoints" class="product-form__fields">
-      <label class="product-form__field">
-        <span class="product-form__label">Pontos (troca parcial)</span>
-        <input
-          v-model.number="form.partialPoints"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          step="1"
-          required
-          class="product-form__input"
-        />
-      </label>
-      <label class="product-form__field">
-        <span class="product-form__label">Preço parcial (R$)</span>
-        <input
-          v-model="form.partialPrice"
-          type="text"
-          inputmode="decimal"
-          required
-          placeholder="0,00"
-          class="product-form__input"
-        />
-      </label>
-    </div>
+    <template v-if="form.allowsPartialPoints">
+      <div class="product-form__fields">
+        <label class="product-form__field">
+          <span class="product-form__label">Preço de custo (R$)</span>
+          <input
+            v-model="form.cost"
+            type="text"
+            inputmode="decimal"
+            required
+            placeholder="0,00"
+            class="product-form__input"
+          />
+        </label>
+      </div>
+      <p class="product-form__hint" aria-live="polite">
+        Troca parcial (custo + 10% e 60% dos pontos):
+        <strong v-if="partialPreview">
+          {{ integer.format(partialPreview.partialPoints) }} pontos +
+          {{ currency.format(partialPreview.partialPrice) }}
+        </strong>
+        <template v-else>informe o preço de custo</template>
+      </p>
+    </template>
 
     <fieldset class="product-form__field product-form__fieldset">
       <legend class="product-form__label">Níveis que podem trocar</legend>

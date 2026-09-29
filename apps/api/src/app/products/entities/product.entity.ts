@@ -22,8 +22,16 @@ export enum ProductTier {
   BLACK = 'black',
 }
 
+// O driver pg devolve numeric como string, por isso o transformer.
+const numeric = {
+  to: (value: number | null) => value,
+  from: (value: string | null) => (value === null ? null : Number(value)),
+};
+
 // Produtos da troca de pontos. A troca pode ser só com pontos (`points`)
 // ou, se `allows_partial_points`, com `partial_points` + `partial_price`.
+// Os três são calculados pela API a partir de preço final, taxa e custo
+// (ver product-pricing.ts).
 @Entity('products')
 @Index('IDX_products_status_created_at', ['status', 'createdAt'])
 @Index('IDX_products_category', ['category'])
@@ -33,6 +41,16 @@ export enum ProductTier {
   `("allows_partial_points" = false AND "partial_points" IS NULL AND "partial_price" IS NULL)
     OR ("allows_partial_points" = true AND "partial_points" > 0
       AND "partial_points" < "points" AND "partial_price" > 0)`,
+)
+@Check('CHK_products_final_price_positive', '"final_price" > 0')
+@Check(
+  'CHK_products_conversion_rate_range',
+  '"conversion_rate" BETWEEN 2 AND 8',
+)
+@Check(
+  'CHK_products_cost',
+  `("allows_partial_points" = false AND "cost" IS NULL)
+    OR ("allows_partial_points" = true AND "cost" > 0)`,
 )
 @Check(
   'CHK_products_allowed_tiers_not_empty',
@@ -57,7 +75,27 @@ export class Product {
   @Column({ name: 'image_url', type: 'varchar', length: 1024 })
   imageUrl!: string;
 
-  // Pontos para trocar só com pontos.
+  // Preço de venda (R$), base do cálculo dos pontos.
+  @Column({
+    name: 'final_price',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    transformer: numeric,
+  })
+  finalPrice!: number;
+
+  // % do preço final convertido em pontos (2 a 8).
+  @Column({
+    name: 'conversion_rate',
+    type: 'numeric',
+    precision: 4,
+    scale: 2,
+    transformer: numeric,
+  })
+  conversionRate!: number;
+
+  // Pontos para trocar só com pontos: finalPrice * conversionRate% * 100.
   @Column({ type: 'integer' })
   points!: number;
 
@@ -72,21 +110,27 @@ export class Product {
   @Column({ name: 'allows_partial_points', type: 'boolean', default: false })
   allowsPartialPoints!: boolean;
 
+  // Custo do produto (R$), base do preço da troca parcial. NULL sem ela.
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numeric,
+  })
+  cost!: number | null;
+
   // Pontos + preço da troca parcial; os dois NULL quando ela não é permitida.
   @Column({ name: 'partial_points', type: 'integer', nullable: true })
   partialPoints!: number | null;
 
-  // O driver pg devolve numeric como string, por isso o transformer.
   @Column({
     name: 'partial_price',
     type: 'numeric',
     precision: 10,
     scale: 2,
     nullable: true,
-    transformer: {
-      to: (value: number | null) => value,
-      from: (value: string | null) => (value === null ? null : Number(value)),
-    },
+    transformer: numeric,
   })
   partialPrice!: number | null;
 

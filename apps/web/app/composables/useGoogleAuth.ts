@@ -15,7 +15,10 @@ declare global {
             login_uri: string;
             nonce: string;
           }): void;
-          renderButton(parent: HTMLElement, options: Record<string, unknown>): void;
+          renderButton(
+            parent: HTMLElement,
+            options: Record<string, unknown>,
+          ): void;
         };
       };
     };

@@ -7,6 +7,7 @@ import type {
 } from '~/composables/useAdmin';
 import {
   MAX_CONVERSION_RATE,
+  MAX_FINAL_PRICE,
   MIN_CONVERSION_RATE,
   calculatePartial,
   calculatePoints,
@@ -59,6 +60,8 @@ const priceFormat = new Intl.NumberFormat('pt-BR', {
 const rateFormat = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 2,
 });
+// A API trabalha com a taxa como fração (0.05); o admin vê e digita em %.
+const formatRate = (rate: number) => rateFormat.format(rate * 100);
 const integer = new Intl.NumberFormat('pt-BR');
 const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -73,9 +76,7 @@ const form = reactive({
   finalPrice:
     props.product != null ? priceFormat.format(props.product.finalPrice) : '',
   conversionRate:
-    props.product != null
-      ? rateFormat.format(props.product.conversionRate)
-      : '',
+    props.product != null ? formatRate(props.product.conversionRate) : '',
   status: (props.product?.status ?? 'active') as ProductStatus,
   allowsPartialPoints: props.product?.allowsPartialPoints ?? false,
   cost:
@@ -143,7 +144,7 @@ function parsePrice(value: string): number {
 // não formam valores válidos.
 const pointsPreview = computed(() => {
   const finalPrice = parsePrice(form.finalPrice);
-  const conversionRate = parsePrice(form.conversionRate);
+  const conversionRate = parseRate(form.conversionRate);
   if (!(finalPrice > 0) || !isValidRate(conversionRate)) return null;
   return calculatePoints(finalPrice, conversionRate);
 });
@@ -153,6 +154,11 @@ const partialPreview = computed(() => {
   if (pointsPreview.value === null || !(cost > 0)) return null;
   return calculatePartial(cost, pointsPreview.value);
 });
+
+// "5" ou "2,5" (em %) -> 0.05 / 0.025; NaN se inválido.
+function parseRate(value: string): number {
+  return Math.round(parsePrice(value) * 100) / 10_000;
+}
 
 function isValidRate(rate: number): boolean {
   return rate >= MIN_CONVERSION_RATE && rate <= MAX_CONVERSION_RATE;
@@ -171,9 +177,12 @@ function validate(): string | ProductInput {
   if (!(finalPrice > 0)) {
     return 'Informe o preço final do produto (ex.: 49,90).';
   }
-  const conversionRate = parsePrice(form.conversionRate);
+  if (finalPrice > MAX_FINAL_PRICE) {
+    return `O preço final deve ser de no máximo ${currency.format(MAX_FINAL_PRICE)}.`;
+  }
+  const conversionRate = parseRate(form.conversionRate);
   if (!isValidRate(conversionRate)) {
-    return `A taxa de conversão deve ficar entre ${MIN_CONVERSION_RATE}% e ${MAX_CONVERSION_RATE}%.`;
+    return `A taxa de conversão deve ficar entre ${formatRate(MIN_CONVERSION_RATE)}% e ${formatRate(MAX_CONVERSION_RATE)}%.`;
   }
   if (!pointsPreview.value) {
     return 'O preço final é baixo demais para gerar pontos com essa taxa.';
@@ -345,7 +354,7 @@ async function handleSubmit() {
           type="text"
           inputmode="decimal"
           required
-          :placeholder="`${MIN_CONVERSION_RATE} a ${MAX_CONVERSION_RATE}`"
+          :placeholder="`${formatRate(MIN_CONVERSION_RATE)} a ${formatRate(MAX_CONVERSION_RATE)}`"
           class="product-form__input"
         />
       </label>

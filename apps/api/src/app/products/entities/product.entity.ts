@@ -45,7 +45,7 @@ const numeric = {
 @Check('CHK_products_final_price_positive', '"final_price" > 0')
 @Check(
   'CHK_products_conversion_rate_range',
-  '"conversion_rate" BETWEEN 2 AND 8',
+  '"conversion_rate" BETWEEN 0.02 AND 0.08',
 )
 @Check(
   'CHK_products_cost',
@@ -85,17 +85,17 @@ export class Product {
   })
   finalPrice!: number;
 
-  // % do preço final convertido em pontos (2 a 8).
+  // Taxa de conversão como fração, de 0.02 a 0.08 (0.05 = 5%).
   @Column({
     name: 'conversion_rate',
     type: 'numeric',
-    precision: 4,
-    scale: 2,
+    precision: 5,
+    scale: 4,
     transformer: numeric,
   })
   conversionRate!: number;
 
-  // Pontos para trocar só com pontos: finalPrice * conversionRate% * 100.
+  // Pontos para trocar só com pontos: (finalPrice / conversionRate) * 100.
   @Column({ type: 'integer' })
   points!: number;
 

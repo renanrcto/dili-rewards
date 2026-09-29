@@ -68,7 +68,8 @@ export interface Product {
   description: string;
   // URL pública da imagem no Cloudflare R2.
   imageUrl: string;
-  // Preço de venda (R$) e % dele convertido em pontos (2 a 8).
+  // Preço de venda (R$) e taxa de conversão como fração (0.02 a 0.08):
+  // pontos = (preço final / taxa) * 100.
   finalPrice: number;
   conversionRate: number;
   // Pontos da troca só com pontos, calculados pela API.

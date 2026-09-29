@@ -144,7 +144,7 @@ function tiersLabel(tiers: ProductTier[]): string {
                 </span>
                 <span class="products__detail">
                   {{ currency.format(product.finalPrice) }} ·
-                  {{ rate.format(product.conversionRate) }}% em pontos
+                  {{ rate.format(product.conversionRate * 100) }}% de conversão
                   <template v-if="product.cost !== null">
                     · custo {{ currency.format(product.cost) }}
                   </template>

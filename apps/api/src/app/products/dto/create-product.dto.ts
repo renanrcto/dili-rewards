@@ -15,7 +15,11 @@ import {
   Min,
 } from 'class-validator';
 import { ProductStatus, ProductTier } from '../entities/product.entity';
-import { MAX_CONVERSION_RATE, MIN_CONVERSION_RATE } from '../product-pricing';
+import {
+  MAX_CONVERSION_RATE,
+  MAX_FINAL_PRICE,
+  MIN_CONVERSION_RATE,
+} from '../product-pricing';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -49,11 +53,11 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
   @Min(0.01)
-  @Max(99_999_999.99)
+  @Max(MAX_FINAL_PRICE)
   finalPrice!: number;
 
-  // Em % do preço final (5 = 5%).
-  @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
+  // Fração (0.05 = 5%): pontos = (preço final / taxa) * 100.
+  @IsNumber({ maxDecimalPlaces: 4, allowNaN: false, allowInfinity: false })
   @Min(MIN_CONVERSION_RATE)
   @Max(MAX_CONVERSION_RATE)
   conversionRate!: number;

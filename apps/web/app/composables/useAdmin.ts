@@ -58,6 +58,30 @@ export interface LogsFilter {
   page?: number;
 }
 
+export type ProductStatus = 'active' | 'inactive';
+export type ProductTier = 'standard' | 'gold' | 'platinum' | 'black';
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  // URL pública da imagem no Cloudflare R2.
+  imageUrl: string;
+  // Pontos da troca só com pontos.
+  points: number;
+  status: ProductStatus;
+  allowsPartialPoints: boolean;
+  // Troca parcial: pontos + preço em reais. null sem troca parcial.
+  partialPoints: number | null;
+  partialPrice: number | null;
+  allowedTiers: ProductTier[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProductInput = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+
 /** Chamadas do painel gerencial (somente super-admin). */
 export function useAdmin() {
   const config = useRuntimeConfig();
@@ -118,5 +142,69 @@ export function useAdmin() {
     });
   }
 
-  return { getDailyPoints, getRates, createRate, deactivateRate, getLogs };
+  /** Produtos da troca de pontos (de uma categoria, se informada). */
+  function getProducts(category?: string): Promise<Product[]> {
+    return $fetch<Product[]>(`${config.public.apiBaseUrl}/admin/products`, {
+      headers: authHeaders(),
+      query: category ? { category } : {},
+    });
+  }
+
+  /** Categorias já usadas nos produtos, em ordem alfabética. */
+  function getProductCategories(): Promise<string[]> {
+    return $fetch<string[]>(
+      `${config.public.apiBaseUrl}/admin/products/categories`,
+      { headers: authHeaders() },
+    );
+  }
+
+  function getProduct(id: string): Promise<Product> {
+    return $fetch<Product>(`${config.public.apiBaseUrl}/admin/products/${id}`, {
+      headers: authHeaders(),
+    });
+  }
+
+  function createProduct(input: ProductInput): Promise<Product> {
+    return $fetch<Product>(`${config.public.apiBaseUrl}/admin/products`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: input,
+    });
+  }
+
+  function updateProduct(
+    id: string,
+    input: Partial<ProductInput>,
+  ): Promise<Product> {
+    return $fetch<Product>(`${config.public.apiBaseUrl}/admin/products/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: input,
+    });
+  }
+
+  /** Envia a imagem para o R2 (via API) e devolve a URL pública. */
+  async function uploadProductImage(file: File): Promise<string> {
+    const body = new FormData();
+    body.append('file', file);
+    const { url } = await $fetch<{ url: string }>(
+      `${config.public.apiBaseUrl}/admin/products/image`,
+      { method: 'POST', headers: authHeaders(), body },
+    );
+    return url;
+  }
+
+  return {
+    getDailyPoints,
+    getRates,
+    createRate,
+    deactivateRate,
+    getLogs,
+    getProducts,
+    getProductCategories,
+    getProduct,
+    createProduct,
+    updateProduct,
+    uploadProductImage,
+  };
 }

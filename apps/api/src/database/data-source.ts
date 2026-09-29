@@ -7,6 +7,7 @@ import { PointsConversionRate } from '../app/points/entities/points-conversion-r
 import { RescuePoint } from '../app/points/entities/rescue-point.entity';
 import { UserPoints } from '../app/points/entities/user-points.entity';
 import { UserTier } from '../app/points/entities/user-tier.entity';
+import { Product } from '../app/products/entities/product.entity';
 import { User } from '../app/users/entities/user.entity';
 
 /**
@@ -32,6 +33,7 @@ export default new DataSource({
     UserTier,
     PasswordResetToken,
     AppLog,
+    Product,
   ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,

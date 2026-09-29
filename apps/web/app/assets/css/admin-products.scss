@@ -1,0 +1,249 @@
+// Estilo das páginas de produtos da área admin (pages/produtos/*), no mesmo
+// padrão visual do painel e da tela de logs.
+.products {
+  min-height: 100dvh;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+
+  &__logo {
+    width: 2.5rem;
+    height: auto;
+  }
+
+  &__heading {
+    flex: 1;
+    min-width: 10rem;
+  }
+
+  &__title {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    color: var(--color-navy);
+    margin: 0;
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--color-navy-muted);
+  }
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.2rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-navy);
+    background: transparent;
+    color: var(--color-navy);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+
+    &--primary {
+      background: var(--color-navy);
+      color: var(--color-cream-high);
+    }
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-maroon);
+      outline-offset: 3px;
+    }
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+    background: var(--color-cream-high);
+    box-shadow: 0 0.5rem 1.5rem var(--color-navy-soft);
+  }
+
+  &__card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  &__card-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--color-navy);
+  }
+
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  &__filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-width: 16rem;
+  }
+
+  &__filter-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-navy-muted);
+  }
+
+  &__input {
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.8rem;
+    border: 1.5px solid var(--color-navy-soft);
+    background: var(--color-cream);
+    color: var(--color-ink);
+    outline: none;
+    min-width: 0;
+    transition: border-color 0.2s ease;
+
+    &:focus-visible {
+      border-color: var(--color-navy);
+    }
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: opacity 0.2s ease;
+
+    &--loading {
+      opacity: 0.5;
+    }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.9rem;
+    background: var(--color-cream);
+    text-decoration: none;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: var(--color-navy-soft);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-maroon);
+      outline-offset: 2px;
+    }
+  }
+
+  &__thumb {
+    width: 4rem;
+    height: 4rem;
+    flex-shrink: 0;
+    border-radius: 0.7rem;
+    object-fit: cover;
+    background: var(--color-cream-high);
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  &__name {
+    font-weight: 700;
+    color: var(--color-navy);
+    overflow-wrap: anywhere;
+  }
+
+  &__detail {
+    font-size: 0.85rem;
+    color: var(--color-navy-muted);
+  }
+
+  &__status {
+    flex-shrink: 0;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+
+    &--active {
+      background: var(--color-navy);
+      color: var(--color-cream-high);
+    }
+
+    &--inactive {
+      background: var(--color-navy-soft);
+      color: var(--color-navy-muted);
+    }
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 1.5rem 0;
+    text-align: center;
+    color: var(--color-navy-muted);
+  }
+
+  &__link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--color-maroon);
+    cursor: pointer;
+  }
+
+  &__error,
+  &__success {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  &__error {
+    color: var(--color-maroon);
+  }
+
+  &__success {
+    padding: 0.8rem 1rem;
+    border-radius: 0.9rem;
+    background: var(--color-navy-soft);
+    color: var(--color-navy);
+  }
+}

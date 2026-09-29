@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { register } = useAuth();
-const { renderButton: renderGoogleButton } = useGoogleAuth();
+const { renderButton: renderGoogleButton, redirectError: googleError } =
+  useGoogleAuth();
 // Login com Apple desativado — por enquanto só login local e Google.
 // const { signIn: signInWithApple } = useAppleAuth();
 const { redirect, goAfterAuth } = useAuthRedirect();
@@ -10,14 +11,14 @@ const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const isSubmitting = ref(false);
-const errorMessage = ref('');
+const errorMessage = ref(googleError.value);
 const googleButtonEl = ref<HTMLElement | null>(null);
 
 onMounted(() => {
   if (googleButtonEl.value) {
     renderGoogleButton(
       googleButtonEl.value,
-      goAfterAuth,
+      redirect.value,
       (message) => (errorMessage.value = message),
     );
   }

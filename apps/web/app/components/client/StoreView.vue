@@ -147,7 +147,6 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
               />
             </div>
             <div class="store__body">
-              <p class="store__category">{{ product.category }}</p>
               <h2 class="store__name">{{ product.name }}</h2>
 
               <p class="store__price">
@@ -262,10 +261,9 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
     margin: 0;
     padding: 0;
     list-style: none;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
-    align-items: stretch;
   }
 
   &__card {
@@ -281,13 +279,13 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
 
     &__container {
       padding: 0.5rem;
-      height: 7rem;
+      min-height: 6rem;
     }
   }
 
   &__image {
     display: block;
-    margin: auto;
+    margin: 1rem auto 0;
     width: 50%;
     -o-object-fit: cover;
     object-fit: cover;
@@ -295,7 +293,7 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
 
   &__body {
     flex: 1;
-    padding: 1rem 1.1rem 1.1rem;
+    padding: 0.5rem 0.9rem 0.9rem;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -315,7 +313,6 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
     font-size: 1.1rem;
     font-weight: 800;
     color: var(--color-navy);
-    min-height: 3.5rem;
   }
 
   &__description {
@@ -330,9 +327,19 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
   }
 
   &__price {
-    margin: 0.4rem 0;
     font-size: 0.95rem;
-    color: var(--color-navy);
+    // Mesmo gradiente do título; fit-content para ele acompanhar o texto e
+    // não a largura do card.
+    background: linear-gradient(
+      to right,
+      var(--color-navy),
+      var(--color-maroon)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    width: fit-content;
 
     strong {
       font-size: 1.35rem;
@@ -359,17 +366,17 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
   }
 
   &__cta {
-    // auto empurra o botão para o fim do card; o mínimo de espaço acima dele
-    // vem do gap do corpo.
-    margin-top: auto;
-    padding: 0.7rem 1.2rem;
+    margin-top: 1rem;
+    padding: 0.65rem 0.5rem;
     border-radius: 999px;
     border: 1.5px dashed var(--color-navy-soft);
     background: transparent;
     color: var(--color-navy-muted);
     font: inherit;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
+    // O rótulo não quebra linha nos cards estreitos do celular.
+    white-space: nowrap;
     cursor: not-allowed;
   }
 
@@ -423,6 +430,29 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
     svg {
       width: 1.9rem;
       height: 1.9rem;
+    }
+  }
+
+  // Telas bem estreitas: menos respiro nas laterais.
+  @media (max-width: 380px) {
+    padding-inline: 1rem;
+
+    &__filters {
+      margin-inline: -1rem;
+      padding-inline: 1rem;
+    }
+
+    &__list {
+      gap: 0.75rem;
+    }
+
+    &__body {
+      padding-inline: 0.75rem;
+    }
+
+    &__cta {
+      padding-inline: 0.25rem;
+      font-size: 0.8rem;
     }
   }
 }

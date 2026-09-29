@@ -36,6 +36,21 @@ const IMAGE_TYPES = [
   },
 ];
 
+// O que o cliente vê de um produto na loja: sem status e datas internas.
+export type CatalogProduct = Pick<
+  Product,
+  | 'id'
+  | 'name'
+  | 'category'
+  | 'description'
+  | 'imageUrl'
+  | 'points'
+  | 'allowsPartialPoints'
+  | 'partialPoints'
+  | 'partialPrice'
+  | 'allowedTiers'
+>;
+
 type Pricing = Pick<
   Product,
   'points' | 'allowsPartialPoints' | 'partialPoints' | 'partialPrice'
@@ -70,6 +85,30 @@ export class ProductsService {
     return this.productsRepository.find({
       where: category ? { category } : {},
       order: { createdAt: 'DESC', id: 'DESC' },
+    });
+  }
+
+  /**
+   * Loja do cliente: só os produtos ativos, agrupáveis por categoria e do
+   * mais barato para o mais caro dentro dela. Inclui os restritos a outros
+   * níveis — o app mostra para quem são.
+   */
+  listCatalog(): Promise<CatalogProduct[]> {
+    return this.productsRepository.find({
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        description: true,
+        imageUrl: true,
+        points: true,
+        allowsPartialPoints: true,
+        partialPoints: true,
+        partialPrice: true,
+        allowedTiers: true,
+      },
+      where: { status: ProductStatus.ACTIVE },
+      order: { category: 'ASC', points: 'ASC', name: 'ASC' },
     });
   }
 

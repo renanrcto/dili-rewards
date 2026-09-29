@@ -6,6 +6,7 @@ import { PointsConversionRate } from '../app/points/entities/points-conversion-r
 import { RescuePoint } from '../app/points/entities/rescue-point.entity';
 import { UserPoints } from '../app/points/entities/user-points.entity';
 import { UserTier } from '../app/points/entities/user-tier.entity';
+import { Product } from '../app/products/entities/product.entity';
 import { User } from '../app/users/entities/user.entity';
 
 export function buildDatabaseConfig(
@@ -26,6 +27,7 @@ export function buildDatabaseConfig(
       UserTier,
       PasswordResetToken,
       AppLog,
+      Product,
     ],
     // Schema é gerenciado só pelas migrations (src/database/migrations) —
     // nunca pelo synchronize, mesmo em desenvolvimento.

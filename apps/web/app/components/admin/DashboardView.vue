@@ -255,6 +255,10 @@ async function handleLogout() {
           >
             Nova venda
           </button>
+          <NuxtLink to="/produtos/novo" class="panel__menu-item">
+            Cadastrar produto
+          </NuxtLink>
+          <NuxtLink to="/produtos" class="panel__menu-item">Produtos</NuxtLink>
           <NuxtLink to="/logs" class="panel__menu-item">Logs</NuxtLink>
           <button type="button" class="panel__menu-item" @click="handleLogout">
             Sair

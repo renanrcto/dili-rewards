@@ -15,10 +15,7 @@ import {
   Min,
 } from 'class-validator';
 import { ProductStatus, ProductTier } from '../entities/product.entity';
-import {
-  MAX_CONVERSION_RATE,
-  MIN_CONVERSION_RATE,
-} from '../product-pricing';
+import { MAX_CONVERSION_RATE, MIN_CONVERSION_RATE } from '../product-pricing';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;

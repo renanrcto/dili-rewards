@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { renderSVG } from 'uqr';
+import { toast } from 'vue-sonner';
 import { STORE_UNITS, storeUnitLabel } from '~/utils/store-units';
 import type { StoreUnit } from '~/utils/store-units';
 import type { AdminTab } from '~/utils/tabs';
@@ -20,9 +21,6 @@ const requestUrl = useRequestURL();
 
 const isSubmitting = ref(false);
 const errorMessage = ref('');
-// Aviso mostrado no formulário quando a tela sai do QR Code sozinha (lido
-// pelo cliente ou expirado).
-const notice = ref<{ kind: 'success' | 'info'; text: string } | null>(null);
 const rescue = ref<ActiveRescue | null>(null);
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
@@ -137,19 +135,17 @@ function finishRescue(outcome: 'redeemed' | 'expired', points?: number | null) {
   const amount = rescue.value?.amount ?? 0;
   handleNewSale();
   if (outcome === 'redeemed') {
-    notice.value = {
-      kind: 'success',
-      text: points
-        ? `QR Code lido! ${points} pontos creditados para o cliente.`
-        : 'QR Code lido! Pontos creditados para o cliente.',
-    };
+    toast.success('QR Code lido!', {
+      description: points
+        ? `${points} pontos creditados para o cliente.`
+        : 'Pontos creditados para o cliente.',
+    });
   } else {
     // Mantém o valor para gerar outro QR com dois toques, se for o caso.
     amountCents.value = Math.round(amount * 100);
-    notice.value = {
-      kind: 'info',
-      text: 'O QR Code expirou sem ser lido. Gere um novo se precisar.',
-    };
+    toast.warning('O QR Code expirou sem ser lido.', {
+      description: 'Gere um novo se precisar.',
+    });
   }
 }
 
@@ -163,7 +159,6 @@ watch(isExpired, (expired) => {
 
 async function generate(amount: number, unit: StoreUnit) {
   errorMessage.value = '';
-  notice.value = null;
   isSubmitting.value = true;
   try {
     const created = await createRescue(amount, unit);
@@ -198,7 +193,6 @@ function handleSubmit() {
     return;
   }
   errorMessage.value = '';
-  notice.value = null;
   isPickingUnit.value = true;
 }
 
@@ -235,7 +229,6 @@ function handleNewSale() {
   rescue.value = null;
   amountCents.value = 0;
   errorMessage.value = '';
-  notice.value = null;
 }
 
 onBeforeUnmount(() => {
@@ -296,15 +289,6 @@ onBeforeUnmount(() => {
           />
         </span>
       </label>
-
-      <p
-        v-if="notice"
-        class="sale__notice"
-        :class="`sale__notice--${notice.kind}`"
-        role="status"
-      >
-        {{ notice.text }}
-      </p>
 
       <p v-if="errorMessage" class="sale__error" role="alert">
         {{ errorMessage }}
@@ -491,25 +475,6 @@ onBeforeUnmount(() => {
     color: var(--color-maroon);
     font-weight: 600;
     text-align: center;
-  }
-
-  &__notice {
-    margin: 0;
-    padding: 0.75rem 1rem;
-    border-radius: 0.9rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-align: center;
-
-    &--success {
-      background: var(--color-navy);
-      color: var(--color-cream-high);
-    }
-
-    &--info {
-      border: 1.5px solid var(--color-navy-soft);
-      color: var(--color-navy-muted);
-    }
   }
 
   &__primary,

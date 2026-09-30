@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { STORE_TIME_ZONE } from '../../config/store.config';
+import { STORE_TIME_ZONE, StoreUnit } from '../../config/store.config';
 import { ConversionRatesService } from './conversion-rates.service';
 import { CreateRescueDto } from './dto/create-rescue.dto';
 import { ListPointsQueryDto } from './dto/list-points-query.dto';
@@ -39,6 +39,8 @@ export interface RescueCode {
 export interface DailyPointsItem {
   id: string;
   userName: string;
+  // null só em vendas anteriores às unidades.
+  unit: StoreUnit | null;
   purchaseAmount: number;
   points: number;
   createdAt: Date;
@@ -46,6 +48,7 @@ export interface DailyPointsItem {
 
 export interface DailyPointsReport {
   date: string;
+  unit: StoreUnit | null;
   items: DailyPointsItem[];
   totals: { credits: number; purchaseAmount: number; points: number };
 }
@@ -72,11 +75,15 @@ export class PointsService {
   ) {}
 
   async createRescue(
-    { purchaseAmount }: CreateRescueDto,
+    { purchaseAmount, unit }: CreateRescueDto,
     adminId: string,
   ): Promise<RescueCode> {
     const saved = await this.rescueRepository.save(
-      this.rescueRepository.create({ createdById: adminId, purchaseAmount }),
+      this.rescueRepository.create({
+        createdById: adminId,
+        purchaseAmount,
+        unit,
+      }),
     );
     // expires_at vem do DEFAULT do banco (now() + 5 minutos).
     const row = await this.rescueRepository.findOneByOrFail({ id: saved.id });
@@ -84,10 +91,9 @@ export class PointsService {
   }
 
   // Resgata um código gerado pelo admin, creditando os pontos para o
-  // usuário logado com a taxa de conversão vigente no momento do resgate.
+  // usuário logado com a taxa de conversão vigente, na unidade da venda, no
+  // momento do resgate.
   async credit(code: string, userId: string): Promise<PointsHistoryItem> {
-    const rate = await this.ratesService.getCurrent();
-
     const savedId = await this.dataSource.transaction(async (manager) => {
       // Lock na linha do código: duas leituras simultâneas do mesmo QR
       // Code são serializadas e a segunda já enxerga o crédito da primeira.
@@ -104,6 +110,8 @@ export class PointsService {
       if (rescue.expiresAt <= new Date()) {
         throw new GoneException('Este código de resgate expirou');
       }
+
+      const rate = await this.ratesService.getCurrent(rescue.unit);
 
       // Conta em centavos para evitar erro de ponto flutuante
       // (ex.: 0.29 * 100 = 28.999...). Frações de ponto são descartadas.
@@ -171,18 +179,23 @@ export class PointsService {
   }
 
   // Painel do super-admin: todos os créditos de um dia (padrão: hoje no
-  // fuso da loja), mais recentes primeiro.
-  async getDailyCredits(date?: string): Promise<DailyPointsReport> {
+  // fuso da loja), mais recentes primeiro — de uma unidade, se informada.
+  async getDailyCredits(
+    date?: string,
+    unit?: StoreUnit,
+  ): Promise<DailyPointsReport> {
     const day = date ?? (await this.storeToday());
 
     // Intervalo em timestamptz (e não um cast da coluna) para aproveitar
     // índices em created_at. CAST em vez de "::" para não confundir o
     // parser de parâmetros do TypeORM.
-    const rows = await this.pointsRepository
+    const query = this.pointsRepository
       .createQueryBuilder('p')
       .innerJoin('p.user', 'u')
+      .innerJoin('p.rescuePoint', 'rp')
       .select('p.id', 'id')
       .addSelect('u.name', 'userName')
+      .addSelect('rp.unit', 'unit')
       .addSelect('p.purchase_amount', 'purchaseAmount')
       .addSelect('p.points', 'points')
       .addSelect('p.created_at', 'createdAt')
@@ -192,12 +205,16 @@ export class PointsService {
       .andWhere(
         `p.created_at < CAST(CAST(:day AS date) + 1 AS timestamp) AT TIME ZONE :tz`,
       )
-      .setParameters({ day, tz: STORE_TIME_ZONE })
+      .setParameters({ day, tz: STORE_TIME_ZONE });
+    if (unit) query.andWhere('rp.unit = :unit', { unit });
+
+    const rows = await query
       .orderBy('p.created_at', 'DESC')
       .addOrderBy('p.id', 'DESC')
       .getRawMany<{
         id: string;
         userName: string;
+        unit: StoreUnit | null;
         purchaseAmount: string;
         points: number;
         createdAt: Date;
@@ -216,6 +233,7 @@ export class PointsService {
 
     return {
       date: day,
+      unit: unit ?? null,
       items,
       totals: {
         credits: items.length,

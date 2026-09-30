@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -15,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ConversionRatesService } from './conversion-rates.service';
 import { CreateConversionRateDto } from './dto/create-conversion-rate.dto';
+import { CurrentRateQueryDto } from './dto/current-rate-query.dto';
 import { UpdateConversionRateDto } from './dto/update-conversion-rate.dto';
 import { PointsConversionRate } from './entities/points-conversion-rate.entity';
 
@@ -24,8 +26,8 @@ export class ConversionRatesController {
   constructor(private readonly ratesService: ConversionRatesService) {}
 
   @Get('current')
-  current(): Promise<PointsConversionRate> {
-    return this.ratesService.getCurrent();
+  current(@Query() query: CurrentRateQueryDto): Promise<PointsConversionRate> {
+    return this.ratesService.getCurrent(query.unit);
   }
 
   @Roles(UserRole.SUPER_ADMIN)

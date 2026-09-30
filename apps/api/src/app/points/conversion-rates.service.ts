@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import { StoreUnit } from '../../config/store.config';
 import { CreateConversionRateDto } from './dto/create-conversion-rate.dto';
 import { PointsConversionRate } from './entities/points-conversion-rate.entity';
 
@@ -15,26 +16,47 @@ export class ConversionRatesService {
     private readonly ratesRepository: Repository<PointsConversionRate>,
   ) {}
 
-  // Taxa vigente = linha ativa e dentro do prazo mais recente. Quando um
-  // boost expira, a vigente volta sozinha para a ativa anterior.
-  async getCurrent(): Promise<PointsConversionRate> {
-    const rate = await this.inEffect().getOne();
+  // Taxa vigente na unidade = linha ativa e dentro do prazo mais recente
+  // entre as da unidade e as que valem para todas. Quando um boost expira,
+  // a vigente volta sozinha para a ativa anterior. Sem unidade, só as que
+  // valem para todas.
+  async getCurrent(
+    unit: StoreUnit | null = null,
+  ): Promise<PointsConversionRate> {
+    const query = this.inEffect();
+    if (unit) {
+      query.andWhere('(r.unit IS NULL OR r.unit = :unit)', { unit });
+    } else {
+      query.andWhere('r.unit IS NULL');
+    }
+    const rate = await query.getOne();
     if (!rate) {
       throw new NotFoundException('Nenhuma taxa de conversão ativa');
     }
     return rate;
   }
 
-  // Todas as taxas em vigor, a vigente primeiro: a padrão (sem prazo) e os
-  // boosts ainda não expirados.
+  // Todas as taxas em vigor, mais recentes primeiro: a padrão (sem prazo) e
+  // os boosts ainda não expirados de cada unidade.
   listInEffect(): Promise<PointsConversionRate[]> {
     return this.inEffect().getMany();
   }
 
   async create(
-    { pointsPerReal, durationHours, observation }: CreateConversionRateDto,
+    {
+      pointsPerReal,
+      durationHours,
+      unit,
+      observation,
+    }: CreateConversionRateDto,
     userId: string,
   ): Promise<PointsConversionRate> {
+    if (!durationHours && unit) {
+      throw new BadRequestException(
+        'A taxa padrão vale para todas as unidades; só promoções têm unidade',
+      );
+    }
+
     // Prazo calculado com o now() do banco — mesma fonte de tempo usada
     // para comparar a expiração em getCurrent.
     const insert = this.ratesRepository
@@ -43,6 +65,7 @@ export class ConversionRatesService {
       .values({
         userId,
         pointsPerReal,
+        unit: durationHours ? unit : null,
         observation: observation ?? null,
         expiresAt: durationHours
           ? () => 'now() + make_interval(hours => :durationHours)'

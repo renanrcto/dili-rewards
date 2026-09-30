@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { renderSVG } from 'uqr';
+import { STORE_UNITS, storeUnitLabel } from '~/utils/store-units';
+import type { StoreUnit } from '~/utils/store-units';
 import type { AdminTab } from '~/utils/tabs';
 
 const emit = defineEmits<{ navigate: [tab: AdminTab] }>();
@@ -7,6 +9,7 @@ const emit = defineEmits<{ navigate: [tab: AdminTab] }>();
 interface ActiveRescue {
   code: string;
   amount: number;
+  unit: StoreUnit;
   expiresAt: number;
 }
 
@@ -92,14 +95,15 @@ function startTimer() {
   }, 1000);
 }
 
-async function generate(amount: number) {
+async function generate(amount: number, unit: StoreUnit) {
   errorMessage.value = '';
   isSubmitting.value = true;
   try {
-    const created = await createRescue(amount);
+    const created = await createRescue(amount, unit);
     rescue.value = {
       code: created.code,
       amount,
+      unit,
       expiresAt: new Date(created.expiresAt).getTime(),
     };
     startTimer();
@@ -113,13 +117,42 @@ async function generate(amount: number) {
   }
 }
 
+// ---- Escolha da unidade ----
+// Depois do valor, o admin escolhe a unidade da venda: os pontos seguem a
+// promoção vigente nela.
+
+const isPickingUnit = ref(false);
+const unitPickerRef = ref<HTMLElement | null>(null);
+
 function handleSubmit() {
   if (amountCents.value <= 0) {
     errorMessage.value = 'Informe o valor da compra.';
     return;
   }
-  generate(amountCents.value / 100);
+  errorMessage.value = '';
+  isPickingUnit.value = true;
 }
+
+function handlePickUnit(unit: StoreUnit) {
+  isPickingUnit.value = false;
+  generate(amountCents.value / 100, unit);
+}
+
+function handleUnitPickerKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') isPickingUnit.value = false;
+}
+
+watch(isPickingUnit, async (open) => {
+  if (!open) return;
+  await nextTick();
+  unitPickerRef.value?.querySelector<HTMLButtonElement>('button')?.focus();
+});
+
+// A view fica no KeepAlive: ao ir para o painel, o seletor não pode ficar
+// aberto esperando a volta.
+onDeactivated(() => {
+  isPickingUnit.value = false;
+});
 
 function handleNewSale() {
   stopTimer();
@@ -195,6 +228,7 @@ onBeforeUnmount(stopTimer);
 
     <section v-else class="sale__qr" aria-live="polite">
       <p class="sale__qr-amount">{{ currency.format(rescue.amount) }}</p>
+      <p class="sale__qr-unit">{{ storeUnitLabel(rescue.unit) }}</p>
 
       <!-- SVG gerado localmente pelo uqr a partir da nossa própria URL -->
       <div
@@ -219,7 +253,7 @@ onBeforeUnmount(stopTimer);
         type="button"
         class="sale__primary"
         :disabled="isSubmitting"
-        @click="generate(rescue.amount)"
+        @click="generate(rescue.amount, rescue.unit)"
       >
         {{ isSubmitting ? 'Gerando…' : 'Gerar novamente' }}
       </button>
@@ -227,6 +261,46 @@ onBeforeUnmount(stopTimer);
         Nova venda
       </button>
     </section>
+
+    <Transition name="sale__picker">
+      <div
+        v-if="isPickingUnit"
+        class="sale__picker"
+        @click.self="isPickingUnit = false"
+        @keydown="handleUnitPickerKeydown"
+      >
+        <div
+          ref="unitPickerRef"
+          class="sale__picker-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="unit-picker-title"
+        >
+          <h2 id="unit-picker-title" class="sale__picker-title">
+            Qual unidade?
+          </h2>
+          <p class="sale__picker-amount">
+            {{ currency.format(amountCents / 100) }}
+          </p>
+          <button
+            v-for="unit in STORE_UNITS"
+            :key="unit.value"
+            type="button"
+            class="sale__primary"
+            @click="handlePickUnit(unit.value)"
+          >
+            {{ unit.label }}
+          </button>
+          <button
+            type="button"
+            class="sale__secondary"
+            @click="isPickingUnit = false"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -387,6 +461,62 @@ onBeforeUnmount(stopTimer);
     font-size: 1.6rem;
     font-weight: 800;
     color: var(--color-navy);
+  }
+
+  &__qr-unit {
+    margin: -0.8rem 0 0;
+    text-align: center;
+    font-weight: 700;
+    color: var(--color-maroon);
+  }
+
+  &__picker {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgb(40 55 74 / 25%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    &-enter-active,
+    &-leave-active {
+      transition: opacity 0.2s ease;
+    }
+
+    &-enter-from,
+    &-leave-to {
+      opacity: 0;
+    }
+  }
+
+  &__picker-dialog {
+    width: min(100%, 22rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    background: var(--color-cream-high);
+    box-shadow: 0 0.75rem 2rem var(--color-navy-soft);
+  }
+
+  &__picker-title {
+    margin: 0;
+    text-align: center;
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--color-navy);
+  }
+
+  &__picker-amount {
+    margin: 0 0 0.25rem;
+    text-align: center;
+    color: var(--color-navy-muted);
   }
 
   &__qr-code {

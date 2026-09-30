@@ -16,6 +16,6 @@ export class AdminPointsController {
 
   @Get('daily')
   daily(@Query() query: DailyPointsQueryDto): Promise<DailyPointsReport> {
-    return this.pointsService.getDailyCredits(query.date);
+    return this.pointsService.getDailyCredits(query.date, query.unit);
   }
 }

@@ -1,0 +1,31 @@
+// Toasts do vue-sonner com as cores da marca. Sobrescreve as variáveis do
+// tema claro (rich colors) e a fonte padrão da biblioteca.
+[data-sonner-toaster][data-sonner-theme='light'] {
+  --normal-bg: var(--color-cream-high);
+  --normal-border: var(--color-navy-soft);
+  --normal-text: var(--color-navy);
+
+  --success-bg: var(--color-cream-high);
+  --success-border: var(--color-navy-soft);
+  --success-text: var(--color-navy);
+
+  --warning-bg: #fbf1f1;
+  --warning-border: var(--color-maroon-soft);
+  --warning-text: var(--color-maroon);
+
+  --error-bg: #fbf1f1;
+  --error-border: var(--color-maroon-soft);
+  --error-text: var(--color-maroon);
+
+  font-family: var(--font-sans);
+}
+
+[data-sonner-toast] {
+  font-weight: 600;
+  box-shadow: 0 0.5rem 1.5rem var(--color-navy-soft);
+}
+
+[data-sonner-toast] [data-description] {
+  font-weight: 500;
+  opacity: 0.85;
+}

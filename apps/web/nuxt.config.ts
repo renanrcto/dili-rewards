@@ -42,7 +42,7 @@ export default defineNuxtConfig({
       appleClientId: process.env.NUXT_PUBLIC_APPLE_CLIENT_ID || '',
     },
   },
-  modules: ['@vite-pwa/nuxt'],
+  modules: ['@vite-pwa/nuxt', 'vue-sonner/nuxt'],
   app: {
     head: {
       title: 'Dili Rewards',
@@ -77,7 +77,10 @@ export default defineNuxtConfig({
       ],
     },
   },
-  css: ['~/assets/css/styles.scss'],
+  // CSS do vue-sonner antes do nosso, para o tema da marca (_toast.scss)
+  // sobrescrever o padrão da biblioteca.
+  css: ['vue-sonner/style.css', '~/assets/css/styles.scss'],
+  vueSonner: { css: false },
   vite: {
     plugins: [nxViteTsPaths()],
   },

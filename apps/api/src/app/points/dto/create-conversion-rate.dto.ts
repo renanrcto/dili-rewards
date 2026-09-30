@@ -1,11 +1,14 @@
 import {
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
+import { StoreUnit } from '../../../config/store.config';
 
 export class CreateConversionRateDto {
   @IsInt()
@@ -19,6 +22,12 @@ export class CreateConversionRateDto {
   @Min(1)
   @Max(720)
   durationHours?: number;
+
+  // Unidade da promoção: obrigatória com durationHours. A taxa padrão
+  // vale para todas as unidades.
+  @ValidateIf((dto: CreateConversionRateDto) => dto.durationHours !== undefined)
+  @IsEnum(StoreUnit)
+  unit?: StoreUnit;
 
   @IsOptional()
   @IsString()

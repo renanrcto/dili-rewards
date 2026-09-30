@@ -8,6 +8,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { StoreUnit } from '../../../config/store.config';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('rescue_points')
@@ -41,6 +42,16 @@ export class RescuePoint {
     },
   })
   purchaseAmount!: number;
+
+  // Unidade da venda: define qual promoção vale no crédito. NULL só em
+  // códigos anteriores às unidades.
+  @Column({
+    type: 'enum',
+    enum: StoreUnit,
+    enumName: 'store_unit_enum',
+    nullable: true,
+  })
+  unit!: StoreUnit | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

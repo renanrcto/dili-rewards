@@ -8,6 +8,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { StoreUnit } from '../../../config/store.config';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('points_conversion_rates')
@@ -15,6 +16,10 @@ import { User } from '../../users/entities/user.entity';
   where: '"active" = true',
 })
 @Check('CHK_points_conversion_rates_positive', '"points_per_real" > 0')
+@Check(
+  'CHK_points_conversion_rates_unit_only_on_boost',
+  '"unit" IS NULL OR "expires_at" IS NOT NULL',
+)
 @Check(
   'CHK_points_conversion_rates_expires_after_created',
   '"expires_at" IS NULL OR "expires_at" > "created_at"',
@@ -50,4 +55,13 @@ export class PointsConversionRate {
   // vigente volta para a ativa anterior.
   @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
   expiresAt!: Date | null;
+
+  // Unidade da promoção; NULL = todas (sempre o caso da taxa padrão).
+  @Column({
+    type: 'enum',
+    enum: StoreUnit,
+    enumName: 'store_unit_enum',
+    nullable: true,
+  })
+  unit!: StoreUnit | null;
 }

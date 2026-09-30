@@ -1,6 +1,10 @@
+import type { StoreUnit } from '~/utils/store-units';
+
 export interface DailyPointsItem {
   id: string;
   userName: string;
+  // null só em vendas anteriores às unidades.
+  unit: StoreUnit | null;
   purchaseAmount: number;
   points: number;
   createdAt: string;
@@ -9,6 +13,8 @@ export interface DailyPointsItem {
 export interface DailyPointsReport {
   // YYYY-MM-DD, no fuso da loja.
   date: string;
+  // Unidade filtrada; null = todas.
+  unit: StoreUnit | null;
   items: DailyPointsItem[];
   totals: { credits: number; purchaseAmount: number; points: number };
 }
@@ -21,6 +27,8 @@ export interface ConversionRate {
   createdAt: string;
   // null = taxa padrão, sem prazo.
   expiresAt: string | null;
+  // Unidade da promoção; null = todas (sempre o caso da taxa padrão).
+  unit: StoreUnit | null;
 }
 
 export type LogLevel = 'warn' | 'error';
@@ -102,15 +110,27 @@ export function useAdmin() {
     return { Authorization: `Bearer ${token.value}` };
   }
 
-  /** Créditos de pontos de um dia (padrão: hoje), mais recentes primeiro. */
-  function getDailyPoints(date?: string): Promise<DailyPointsReport> {
+  /**
+   * Créditos de pontos de um dia (padrão: hoje), mais recentes primeiro — de
+   * uma unidade, se informada.
+   */
+  function getDailyPoints(
+    date?: string,
+    unit?: StoreUnit,
+  ): Promise<DailyPointsReport> {
+    const query: Record<string, string> = {};
+    if (date) query.date = date;
+    if (unit) query.unit = unit;
     return $fetch<DailyPointsReport>(
       `${config.public.apiBaseUrl}/admin/points/daily`,
-      { headers: authHeaders(), query: date ? { date } : {} },
+      { headers: authHeaders(), query },
     );
   }
 
-  /** Taxas em vigor; a primeira é a usada nos créditos agora. */
+  /**
+   * Taxas em vigor, mais recentes primeiro. Em cada unidade vale a primeira
+   * da lista que seja dela ou de todas.
+   */
   function getRates(): Promise<ConversionRate[]> {
     return $fetch<ConversionRate[]>(
       `${config.public.apiBaseUrl}/points/rates`,
@@ -120,10 +140,14 @@ export function useAdmin() {
     );
   }
 
-  /** Sem `durationHours`, a nova taxa vira a padrão. */
+  /**
+   * Sem `durationHours`, a nova taxa vira a padrão (todas as unidades).
+   * Promoções exigem `unit`.
+   */
   function createRate(input: {
     pointsPerReal: number;
     durationHours?: number;
+    unit?: StoreUnit;
     observation?: string;
   }): Promise<ConversionRate> {
     return $fetch<ConversionRate>(`${config.public.apiBaseUrl}/points/rates`, {

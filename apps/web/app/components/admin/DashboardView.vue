@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { ConversionRate } from '~/composables/useAdmin';
+import { STORE_UNITS, storeUnitLabel } from '~/utils/store-units';
+import type { StoreUnit } from '~/utils/store-units';
 import type { AdminTab } from '~/utils/tabs';
 
 const emit = defineEmits<{ navigate: [tab: AdminTab] }>();
@@ -41,6 +43,8 @@ const longDate = new Intl.DateTimeFormat('pt-BR', {
 
 // Vazio = hoje (definido pela API no fuso da loja).
 const selectedDate = ref('');
+// Vazio = todas as unidades.
+const selectedUnit = ref<StoreUnit | ''>('');
 
 const {
   data: report,
@@ -49,8 +53,12 @@ const {
   refresh: refreshReport,
 } = useAsyncData(
   'admin-daily-points',
-  () => getDailyPoints(selectedDate.value || undefined),
-  { watch: [selectedDate] },
+  () =>
+    getDailyPoints(
+      selectedDate.value || undefined,
+      selectedUnit.value || undefined,
+    ),
+  { watch: [selectedDate, selectedUnit] },
 );
 
 const isReportLoading = computed(() => !report.value && !reportError.value);
@@ -71,10 +79,20 @@ const {
 
 const isRatesLoading = computed(() => !rates.value && !ratesError.value);
 
-const currentRate = computed(() => rates.value?.[0] ?? null);
-// Taxa para a qual o programa volta quando os boosts expiram.
+// Taxa para a qual cada unidade volta quando os boosts expiram.
 const defaultRate = computed(
   () => rates.value?.find((rate) => rate.expiresAt === null) ?? null,
+);
+// Vigente em cada unidade: a mais recente entre as dela e as de todas
+// (a lista já vem ordenada da API).
+const unitRates = computed(() =>
+  STORE_UNITS.map((unit) => ({
+    ...unit,
+    rate:
+      rates.value?.find(
+        (rate) => rate.unit === null || rate.unit === unit.value,
+      ) ?? null,
+  })),
 );
 const boosts = computed(
   () => rates.value?.filter((rate) => rate.expiresAt !== null) ?? [],
@@ -84,6 +102,7 @@ const form = reactive({
   pointsPerReal: '' as number | '',
   temporary: true,
   durationHours: 3 as number | '',
+  unit: '' as StoreUnit | '',
   observation: '',
 });
 const isSaving = ref(false);
@@ -111,17 +130,22 @@ async function handleCreateRate() {
     formError.value = `A duração deve ser de 1 a ${MAX_DURATION_HOURS} horas.`;
     return;
   }
+  if (form.temporary && !form.unit) {
+    formError.value = 'Escolha a unidade da promoção.';
+    return;
+  }
 
   isSaving.value = true;
   try {
     const created = await createRate({
       pointsPerReal,
       durationHours: form.temporary ? durationHours : undefined,
+      unit: form.temporary && form.unit ? form.unit : undefined,
       observation: form.observation.trim() || undefined,
     });
     formSuccess.value = created.expiresAt
-      ? `Promoção ativa até ${dateTimeFormat.format(new Date(created.expiresAt))}.`
-      : 'Nova taxa padrão ativa.';
+      ? `Promoção na ${created.unit ? storeUnitLabel(created.unit) : 'rede'} ativa até ${dateTimeFormat.format(new Date(created.expiresAt))}.`
+      : 'Nova taxa padrão ativa em todas as unidades.';
     form.pointsPerReal = '';
     form.observation = '';
     await refreshRates();
@@ -279,15 +303,30 @@ async function handleLogout() {
           />
           <p v-else class="panel__card-subtitle">{{ reportDateLabel }}</p>
         </div>
-        <label class="panel__date">
-          <span class="visually-hidden">Data</span>
-          <input
-            :value="selectedDate || report?.date"
-            type="date"
-            class="panel__input"
-            @change="selectedDate = ($event.target as HTMLInputElement).value"
-          />
-        </label>
+        <div class="panel__filters">
+          <label class="panel__date">
+            <span class="visually-hidden">Unidade</span>
+            <select v-model="selectedUnit" class="panel__input">
+              <option value="">Todas as unidades</option>
+              <option
+                v-for="unit in STORE_UNITS"
+                :key="unit.value"
+                :value="unit.value"
+              >
+                {{ unit.label }}
+              </option>
+            </select>
+          </label>
+          <label class="panel__date">
+            <span class="visually-hidden">Data</span>
+            <input
+              :value="selectedDate || report?.date"
+              type="date"
+              class="panel__input"
+              @change="selectedDate = ($event.target as HTMLInputElement).value"
+            />
+          </label>
+        </div>
       </div>
 
       <div v-if="isReportLoading" class="panel__loading" aria-busy="true">
@@ -328,7 +367,9 @@ async function handleLogout() {
         </dl>
 
         <p v-if="!report.items.length" class="panel__empty">
-          Nenhum ponto creditado neste dia.
+          Nenhum ponto creditado neste dia{{
+            report.unit ? ` na ${storeUnitLabel(report.unit)}` : ''
+          }}.
         </p>
 
         <div
@@ -340,6 +381,7 @@ async function handleLogout() {
             <thead>
               <tr>
                 <th scope="col">Cliente</th>
+                <th scope="col">Unidade</th>
                 <th scope="col">Horário</th>
                 <th scope="col" class="panel__num">Valor da compra</th>
                 <th scope="col" class="panel__num">Pontos</th>
@@ -348,6 +390,7 @@ async function handleLogout() {
             <tbody>
               <tr v-for="item in report.items" :key="item.id">
                 <td>{{ item.userName }}</td>
+                <td>{{ item.unit ? storeUnitLabel(item.unit) : '—' }}</td>
                 <td>{{ timeFormat.format(new Date(item.createdAt)) }}</td>
                 <td class="panel__num">
                   {{ currency.format(item.purchaseAmount) }}
@@ -378,28 +421,44 @@ async function handleLogout() {
       </p>
 
       <template v-else>
-        <div v-if="currentRate" class="panel__current">
-          <p class="panel__current-value">
-            {{ integer.format(currentRate.pointsPerReal) }}
-            <span>pontos por R$ 1</span>
-          </p>
-          <p class="panel__current-note">
-            <template v-if="currentRate.expiresAt">
-              Promoção até
-              {{ dateTimeFormat.format(new Date(currentRate.expiresAt)) }}
-              <template v-if="defaultRate">
-                — depois volta para
-                {{ integer.format(defaultRate.pointsPerReal) }} pontos
-              </template>
+        <ul class="panel__units">
+          <li
+            v-for="unit in unitRates"
+            :key="unit.value"
+            class="panel__current"
+            :class="{ 'panel__current--boost': unit.rate?.expiresAt }"
+          >
+            <p class="panel__current-unit">{{ unit.label }}</p>
+            <template v-if="unit.rate">
+              <p class="panel__current-value">
+                {{ integer.format(unit.rate.pointsPerReal) }}
+                <span>pontos por R$ 1</span>
+              </p>
+              <p class="panel__current-note">
+                <template v-if="unit.rate.expiresAt">
+                  Promoção até
+                  {{ dateTimeFormat.format(new Date(unit.rate.expiresAt)) }}
+                  <template v-if="defaultRate">
+                    — depois volta para
+                    {{ integer.format(defaultRate.pointsPerReal) }} pontos
+                  </template>
+                </template>
+                <template v-else>Taxa padrão, sem prazo</template>
+              </p>
             </template>
-            <template v-else>Taxa padrão, sem prazo</template>
-          </p>
-        </div>
+            <p v-else class="panel__current-note">Nenhuma taxa ativa</p>
+          </li>
+        </ul>
 
         <ul v-if="boosts.length" class="panel__boosts">
           <li v-for="rate in boosts" :key="rate.id" class="panel__boost">
             <div>
-              <strong>{{ integer.format(rate.pointsPerReal) }} pts/R$</strong>
+              <strong>
+                {{
+                  rate.unit ? storeUnitLabel(rate.unit) : 'Todas as unidades'
+                }}
+                · {{ integer.format(rate.pointsPerReal) }} pts/R$
+              </strong>
               até {{ dateTimeFormat.format(new Date(rate.expiresAt!)) }}
               <span v-if="rate.observation" class="panel__boost-note">
                 {{ rate.observation }}
@@ -435,6 +494,20 @@ async function handleLogout() {
         </div>
 
         <div class="panel__fields">
+          <label v-if="form.temporary" class="panel__field">
+            <span class="panel__label">Unidade</span>
+            <select v-model="form.unit" required class="panel__input">
+              <option value="" disabled>Escolha a unidade</option>
+              <option
+                v-for="unit in STORE_UNITS"
+                :key="unit.value"
+                :value="unit.value"
+              >
+                {{ unit.label }}
+              </option>
+            </select>
+          </label>
+
           <label class="panel__field">
             <span class="panel__label">Pontos por R$ 1</span>
             <input
@@ -444,7 +517,7 @@ async function handleLogout() {
               min="1"
               step="1"
               required
-              :placeholder="String(currentRate?.pointsPerReal ?? 100)"
+              :placeholder="String(defaultRate?.pointsPerReal ?? 100)"
               class="panel__input"
             />
           </label>
@@ -477,13 +550,15 @@ async function handleLogout() {
 
         <p class="panel__hint">
           <template v-if="form.temporary">
-            Ao fim do prazo, a taxa volta sozinha para a padrão ({{
+            A promoção vale só na unidade escolhida. Ao fim do prazo, a taxa
+            volta sozinha para a padrão ({{
               integer.format(defaultRate?.pointsPerReal ?? 100)
             }}
             pontos por real).
           </template>
           <template v-else>
-            A nova taxa substitui a padrão atual e vale até ser trocada.
+            A nova taxa substitui a padrão atual em todas as unidades e vale até
+            ser trocada.
           </template>
         </p>
 
@@ -689,6 +764,12 @@ async function handleLogout() {
     color: var(--color-navy);
   }
 
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
   &__input {
     font: inherit;
     font-size: 1rem;
@@ -788,11 +869,31 @@ async function handleLogout() {
     color: var(--color-navy-muted);
   }
 
+  &__units {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.75rem;
+  }
+
   &__current {
     padding: 1rem 1.1rem;
     border-radius: 0.9rem;
     background: var(--color-navy);
     color: var(--color-cream-high);
+
+    &--boost {
+      background: var(--color-maroon);
+    }
+  }
+
+  &__current-unit {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    opacity: 0.85;
   }
 
   &__current-value {

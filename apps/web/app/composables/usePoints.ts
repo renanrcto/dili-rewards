@@ -1,3 +1,5 @@
+import type { StoreUnit } from '~/utils/store-units';
+
 export interface PointsBalance {
   balance: number;
 }
@@ -66,10 +68,9 @@ export function usePoints() {
   }
 
   function getBalance(): Promise<PointsBalance> {
-    return $fetch<PointsBalance>(
-      `${config.public.apiBaseUrl}/points/balance`,
-      { headers: authHeaders() },
-    );
+    return $fetch<PointsBalance>(`${config.public.apiBaseUrl}/points/balance`, {
+      headers: authHeaders(),
+    });
   }
 
   /** Nível do usuário logado (standard/gold/platinum/black). */
@@ -87,12 +88,18 @@ export function usePoints() {
     );
   }
 
-  /** Admin: gera o código (válido por 5 minutos) que vai no QR Code. */
-  function createRescue(purchaseAmount: number): Promise<RescueCode> {
+  /**
+   * Admin: gera o código (válido por 5 minutos) que vai no QR Code. Os
+   * pontos seguem a taxa vigente na unidade da venda.
+   */
+  function createRescue(
+    purchaseAmount: number,
+    unit: StoreUnit,
+  ): Promise<RescueCode> {
     return $fetch<RescueCode>(`${config.public.apiBaseUrl}/points/rescues`, {
       method: 'POST',
       headers: authHeaders(),
-      body: { purchaseAmount },
+      body: { purchaseAmount, unit },
     });
   }
 

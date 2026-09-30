@@ -132,7 +132,14 @@ export class PointsService {
       if (!rescue) {
         throw new NotFoundException('Código de resgate inválido');
       }
-      if (await manager.existsBy(UserPoints, { rescuePointId: rescue.id })) {
+      const existing = await manager.findOne(UserPoints, {
+        where: { rescuePointId: rescue.id },
+        select: { id: true, userId: true },
+      });
+      if (existing) {
+        // O mesmo cliente reenviando o código (ex.: a página recarregou
+        // depois do resgate) recebe o crédito já feito em vez de erro.
+        if (existing.userId === userId) return existing.id;
         throw new ConflictException('Este código já foi resgatado');
       }
       if (rescue.expiresAt <= new Date()) {

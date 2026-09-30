@@ -514,7 +514,7 @@ onBeforeUnmount(() => {
   &__tertiary {
     background: var(--color-maroon);
     color: var(--color-cream-high);
-    border: none
+    border: none;
   }
 
   &__qr-amount {

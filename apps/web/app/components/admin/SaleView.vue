@@ -294,7 +294,11 @@ onBeforeUnmount(() => {
         {{ errorMessage }}
       </p>
 
-      <button type="submit" class="sale__primary" :disabled="isSubmitting">
+      <button 
+        type="submit" 
+        :class="isPickingUnit ? 'sale__secondary' : 'sale__primary'" 
+        :disabled="isSubmitting"
+      >
         {{ isSubmitting ? 'Gerando…' : 'Gerar QR Code' }}
       </button>
     </form>

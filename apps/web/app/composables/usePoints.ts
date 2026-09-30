@@ -7,6 +7,7 @@ export interface PointsBalance {
 export interface RescueCode {
   code: string;
   expiresAt: string;
+  expiresInSeconds: number;
 }
 
 export type RescueStatus = 'pending' | 'redeemed' | 'expired';

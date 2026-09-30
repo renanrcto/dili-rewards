@@ -34,6 +34,10 @@ export interface PointsHistoryItem {
 export interface RescueCode {
   code: string;
   expiresAt: Date;
+  // Validade em segundos, medida pelo relógio do banco. O front conta a
+  // partir do próprio relógio: o do aparelho pode estar adiantado ou
+  // atrasado e comparar com expiresAt faria o QR já nascer expirado.
+  expiresInSeconds: number;
 }
 
 // Situação do QR Code gerado no caixa, consultada em polling pela tela de
@@ -97,7 +101,13 @@ export class PointsService {
     );
     // expires_at vem do DEFAULT do banco (now() + 5 minutos).
     const row = await this.rescueRepository.findOneByOrFail({ id: saved.id });
-    return { code: row.id, expiresAt: row.expiresAt };
+    return {
+      code: row.id,
+      expiresAt: row.expiresAt,
+      expiresInSeconds: Math.round(
+        (row.expiresAt.getTime() - row.createdAt.getTime()) / 1000,
+      ),
+    };
   }
 
   async getRescueStatus(code: string): Promise<RescueCodeStatus> {

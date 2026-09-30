@@ -166,7 +166,12 @@ async function generate(amount: number, unit: StoreUnit) {
       code: created.code,
       amount,
       unit,
-      expiresAt: new Date(created.expiresAt).getTime(),
+      // Conta pela duração, não pelo expiresAt: o relógio do aparelho pode
+      // estar fora da hora e o QR apareceria como já expirado.
+      // Fallback para API ainda sem expiresInSeconds durante o deploy.
+      expiresAt: created.expiresInSeconds
+        ? Date.now() + created.expiresInSeconds * 1000
+        : new Date(created.expiresAt).getTime(),
     };
     startTimer();
     schedulePoll();

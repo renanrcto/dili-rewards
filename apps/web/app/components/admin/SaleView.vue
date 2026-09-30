@@ -13,13 +13,16 @@ interface ActiveRescue {
   expiresAt: number;
 }
 
-const { createRescue } = usePoints();
+const { createRescue, getRescueStatus } = usePoints();
 const { account } = useAuth();
 const isSuperAdmin = computed(() => account.value?.role === 'super_admin');
 const requestUrl = useRequestURL();
 
 const isSubmitting = ref(false);
 const errorMessage = ref('');
+// Aviso mostrado no formulário quando a tela sai do QR Code sozinha (lido
+// pelo cliente ou expirado).
+const notice = ref<{ kind: 'success' | 'info'; text: string } | null>(null);
 const rescue = ref<ActiveRescue | null>(null);
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
@@ -95,8 +98,72 @@ function startTimer() {
   }, 1000);
 }
 
+// ---- Polling do QR Code ----
+// Enquanto o QR está na tela, consulta se o cliente já leu. Assim que é
+// lido (ou expira) a tela volta para "Nova venda" e o QR some — senão o
+// próximo cliente acabava escaneando um código já usado.
+
+const POLL_INTERVAL_MS = 2500;
+let pollTimeout: ReturnType<typeof setTimeout> | undefined;
+
+function stopPolling() {
+  if (pollTimeout) clearTimeout(pollTimeout);
+  pollTimeout = undefined;
+}
+
+function schedulePoll() {
+  stopPolling();
+  pollTimeout = setTimeout(checkRescue, POLL_INTERVAL_MS);
+}
+
+async function checkRescue() {
+  const code = rescue.value?.code;
+  if (!code) return;
+  try {
+    const { status, points } = await getRescueStatus(code);
+    // O admin pode ter trocado de venda enquanto a requisição voltava.
+    if (rescue.value?.code !== code) return;
+    if (status === 'redeemed') return finishRescue('redeemed', points);
+    if (status === 'expired') return finishRescue('expired');
+  } catch {
+    // Falha de rede: segue tentando; o cronômetro local cobre a expiração.
+    if (rescue.value?.code !== code) return;
+  }
+  if (isExpired.value) return finishRescue('expired');
+  schedulePoll();
+}
+
+function finishRescue(outcome: 'redeemed' | 'expired', points?: number | null) {
+  const amount = rescue.value?.amount ?? 0;
+  handleNewSale();
+  if (outcome === 'redeemed') {
+    notice.value = {
+      kind: 'success',
+      text: points
+        ? `QR Code lido! ${points} pontos creditados para o cliente.`
+        : 'QR Code lido! Pontos creditados para o cliente.',
+    };
+  } else {
+    // Mantém o valor para gerar outro QR com dois toques, se for o caso.
+    amountCents.value = Math.round(amount * 100);
+    notice.value = {
+      kind: 'info',
+      text: 'O QR Code expirou sem ser lido. Gere um novo se precisar.',
+    };
+  }
+}
+
+// Ao zerar o cronômetro, confere uma última vez no servidor antes de sair:
+// o cliente pode ter lido no último segundo.
+watch(isExpired, (expired) => {
+  if (!expired) return;
+  stopPolling();
+  checkRescue();
+});
+
 async function generate(amount: number, unit: StoreUnit) {
   errorMessage.value = '';
+  notice.value = null;
   isSubmitting.value = true;
   try {
     const created = await createRescue(amount, unit);
@@ -107,6 +174,7 @@ async function generate(amount: number, unit: StoreUnit) {
       expiresAt: new Date(created.expiresAt).getTime(),
     };
     startTimer();
+    schedulePoll();
   } catch (error) {
     errorMessage.value = extractErrorMessage(
       error,
@@ -130,6 +198,7 @@ function handleSubmit() {
     return;
   }
   errorMessage.value = '';
+  notice.value = null;
   isPickingUnit.value = true;
 }
 
@@ -149,19 +218,30 @@ watch(isPickingUnit, async (open) => {
 });
 
 // A view fica no KeepAlive: ao ir para o painel, o seletor não pode ficar
-// aberto esperando a volta.
+// aberto esperando a volta, nem o polling rodando em segundo plano.
 onDeactivated(() => {
   isPickingUnit.value = false;
+  stopPolling();
+});
+
+// Na volta, confere na hora: o QR pode ter sido lido nesse meio-tempo.
+onActivated(() => {
+  if (rescue.value) checkRescue();
 });
 
 function handleNewSale() {
   stopTimer();
+  stopPolling();
   rescue.value = null;
   amountCents.value = 0;
   errorMessage.value = '';
+  notice.value = null;
 }
 
-onBeforeUnmount(stopTimer);
+onBeforeUnmount(() => {
+  stopTimer();
+  stopPolling();
+});
 </script>
 
 <template>
@@ -217,6 +297,15 @@ onBeforeUnmount(stopTimer);
         </span>
       </label>
 
+      <p
+        v-if="notice"
+        class="sale__notice"
+        :class="`sale__notice--${notice.kind}`"
+        role="status"
+      >
+        {{ notice.text }}
+      </p>
+
       <p v-if="errorMessage" class="sale__error" role="alert">
         {{ errorMessage }}
       </p>
@@ -233,30 +322,15 @@ onBeforeUnmount(stopTimer);
       <!-- SVG gerado localmente pelo uqr a partir da nossa própria URL -->
       <div
         class="sale__qr-code"
-        :class="{ 'sale__qr-code--expired': isExpired }"
         role="img"
         aria-label="QR Code para o cliente resgatar os pontos"
         v-html="qrSvg"
       />
 
-      <p v-if="!isExpired" class="sale__qr-timer">
+      <p class="sale__qr-timer">
         Expira em <strong>{{ countdown }}</strong>
       </p>
-      <p v-else class="sale__error" role="alert">Este QR Code expirou.</p>
 
-      <p v-if="errorMessage" class="sale__error" role="alert">
-        {{ errorMessage }}
-      </p>
-
-      <button
-        v-if="isExpired"
-        type="button"
-        class="sale__primary"
-        :disabled="isSubmitting"
-        @click="generate(rescue.amount, rescue.unit)"
-      >
-        {{ isSubmitting ? 'Gerando…' : 'Gerar novamente' }}
-      </button>
       <button type="button" class="sale__secondary" @click="handleNewSale">
         Nova venda
       </button>
@@ -419,6 +493,25 @@ onBeforeUnmount(stopTimer);
     text-align: center;
   }
 
+  &__notice {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+
+    &--success {
+      background: var(--color-navy);
+      color: var(--color-cream-high);
+    }
+
+    &--info {
+      border: 1.5px solid var(--color-navy-soft);
+      color: var(--color-navy-muted);
+    }
+  }
+
   &__primary,
   &__secondary {
     padding: 1rem 1.4rem;
@@ -526,16 +619,11 @@ onBeforeUnmount(stopTimer);
     border-radius: 1.25rem;
     background: var(--color-cream-high);
     box-shadow: 0 0.5rem 1.5rem var(--color-navy-soft);
-    transition: opacity 0.3s ease;
 
     :deep(svg) {
       display: block;
       width: 100%;
       height: auto;
-    }
-
-    &--expired {
-      opacity: 0.2;
     }
   }
 

@@ -9,6 +9,14 @@ export interface RescueCode {
   expiresAt: string;
 }
 
+export type RescueStatus = 'pending' | 'redeemed' | 'expired';
+
+export interface RescueCodeStatus {
+  status: RescueStatus;
+  // Pontos creditados; só quando status = 'redeemed'.
+  points: number | null;
+}
+
 export interface CreditedPoints {
   id: string;
   purchaseAmount: number;
@@ -103,6 +111,14 @@ export function usePoints() {
     });
   }
 
+  /** Admin: situação do QR Code gerado (lido, expirado ou aguardando). */
+  function getRescueStatus(code: string): Promise<RescueCodeStatus> {
+    return $fetch<RescueCodeStatus>(
+      `${config.public.apiBaseUrl}/points/rescues/${code}`,
+      { headers: authHeaders() },
+    );
+  }
+
   /** Cliente: resgata o código lido no QR Code para a própria conta. */
   function redeem(code: string): Promise<CreditedPoints> {
     return $fetch<CreditedPoints>(`${config.public.apiBaseUrl}/points`, {
@@ -112,5 +128,12 @@ export function usePoints() {
     });
   }
 
-  return { getBalance, getTier, getHistory, createRescue, redeem };
+  return {
+    getBalance,
+    getTier,
+    getHistory,
+    createRescue,
+    getRescueStatus,
+    redeem,
+  };
 }

@@ -36,6 +36,16 @@ export interface RescueCode {
   expiresAt: Date;
 }
 
+// Situação do QR Code gerado no caixa, consultada em polling pela tela de
+// venda para sair do QR assim que ele é lido ou expira.
+export type RescueStatus = 'pending' | 'redeemed' | 'expired';
+
+export interface RescueCodeStatus {
+  status: RescueStatus;
+  // Pontos creditados; só quando status = 'redeemed'.
+  points: number | null;
+}
+
 export interface DailyPointsItem {
   id: string;
   userName: string;
@@ -88,6 +98,24 @@ export class PointsService {
     // expires_at vem do DEFAULT do banco (now() + 5 minutos).
     const row = await this.rescueRepository.findOneByOrFail({ id: saved.id });
     return { code: row.id, expiresAt: row.expiresAt };
+  }
+
+  async getRescueStatus(code: string): Promise<RescueCodeStatus> {
+    const rescue = await this.rescueRepository.findOneBy({ id: code });
+    if (!rescue) {
+      throw new NotFoundException('Código de resgate inválido');
+    }
+    const credit = await this.pointsRepository.findOne({
+      where: { rescuePointId: rescue.id },
+      select: { id: true, points: true },
+    });
+    // Mesma ordem do credit(): um código resgatado é "redeemed" mesmo que
+    // a consulta aconteça depois da expiração.
+    if (credit) return { status: 'redeemed', points: credit.points };
+    if (rescue.expiresAt <= new Date()) {
+      return { status: 'expired', points: null };
+    }
+    return { status: 'pending', points: null };
   }
 
   // Resgata um código gerado pelo admin, creditando os pontos para o

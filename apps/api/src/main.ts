@@ -15,7 +15,17 @@ async function bootstrap() {
   app.useLogger(app.get(DatabaseLogger));
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
-  app.enableCors({ origin: process.env.WEB_APP_URL || 'http://localhost:4200' });
+  // CORS_ORIGINS aceita várias origens separadas por vírgula (ex.: com e sem
+  // www). Sem ela, vale só o WEB_APP_URL.
+  const corsOrigins = (
+    process.env.CORS_ORIGINS ||
+    process.env.WEB_APP_URL ||
+    'http://localhost:4200'
+  )
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+  app.enableCors({ origin: corsOrigins });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

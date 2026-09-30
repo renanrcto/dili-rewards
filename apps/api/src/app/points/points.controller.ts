@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -13,6 +22,7 @@ import type {
   PointsBalance,
   PointsHistoryItem,
   RescueCode,
+  RescueCodeStatus,
 } from './points.service';
 import { TiersService } from './tiers.service';
 import type { UserTierStatus } from './tiers.service';
@@ -36,6 +46,16 @@ export class PointsController {
     @Body() dto: CreateRescueDto,
   ): Promise<RescueCode> {
     return this.pointsService.createRescue(dto, admin.id);
+  }
+
+  // Tela de venda consulta (polling) se o QR Code já foi lido ou expirou.
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @Get('rescues/:code')
+  rescueStatus(
+    @Param('code', ParseUUIDPipe) code: string,
+  ): Promise<RescueCodeStatus> {
+    return this.pointsService.getRescueStatus(code);
   }
 
   // Cliente resgata o código lido no QR Code; os pontos vão sempre para o

@@ -335,16 +335,13 @@ onBeforeUnmount(() => {
           aria-labelledby="unit-picker-title"
         >
           <h2 id="unit-picker-title" class="sale__picker-title">
-            Qual unidade?
+            Em qual unidade da Dili o cliente está?
           </h2>
-          <p class="sale__picker-amount">
-            {{ currency.format(amountCents / 100) }}
-          </p>
           <button
             v-for="unit in STORE_UNITS"
             :key="unit.value"
             type="button"
-            class="sale__primary"
+            class="sale__tertiary"
             @click="handlePickUnit(unit.value)"
           >
             {{ unit.label }}
@@ -478,7 +475,8 @@ onBeforeUnmount(() => {
   }
 
   &__primary,
-  &__secondary {
+  &__secondary,
+  &__tertiary {
     padding: 1rem 1.4rem;
     border-radius: 999px;
     border: 1.5px solid var(--color-navy);
@@ -513,6 +511,12 @@ onBeforeUnmount(() => {
     color: var(--color-navy);
   }
 
+  &__tertiary {
+    background: var(--color-maroon);
+    color: var(--color-cream-high);
+    border: none;
+  }
+
   &__qr-amount {
     margin: 0;
     text-align: center;
@@ -536,7 +540,7 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    background: rgb(40 55 74 / 25%);
+    background: rgb(40 55 74 / 5%);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 
@@ -555,11 +559,8 @@ onBeforeUnmount(() => {
     width: min(100%, 22rem);
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    border-radius: 1.25rem;
-    background: var(--color-cream-high);
-    box-shadow: 0 0.75rem 2rem var(--color-navy-soft);
+    gap: 1rem;
+    padding: 2rem;
   }
 
   &__picker-title {

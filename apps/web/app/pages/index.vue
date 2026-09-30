@@ -1,10 +1,25 @@
 <script setup lang="ts">
+import { HOME_BY_ROLE } from '#shared/auth';
 import type { ClientTab } from '~/utils/tabs';
 
 // Área do cliente: uma única rota com as abas do MenuBottom (ver
 // utils/tabs.ts). Cada aba carrega os próprios dados e mostra skeleton até
 // eles chegarem.
 definePageMeta({ middleware: 'auth' });
+
+const { account } = useAuth();
+
+// Admin com sessão salva que reabre o app cai aqui; manda para a área da
+// equipe. A conta pode chegar depois do /auth/me, por isso o watch.
+watch(
+  () => account.value?.role,
+  (role) => {
+    if (role && role !== 'customer') {
+      navigateTo(HOME_BY_ROLE[role], { replace: true });
+    }
+  },
+  { immediate: true },
+);
 
 const tab = ref<ClientTab>('home');
 

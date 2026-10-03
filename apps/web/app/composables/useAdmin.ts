@@ -1,3 +1,5 @@
+import type { AuthAccountRole } from '~/composables/useAuth';
+import type { TierLevel } from '~/composables/usePoints';
 import type { StoreUnit } from '~/utils/store-units';
 
 export interface DailyPointsItem {
@@ -100,6 +102,38 @@ export type ProductInput = Omit<
   Product,
   'id' | 'createdAt' | 'updatedAt' | 'points' | 'partialPoints' | 'partialPrice'
 >;
+
+export type CustomerSort = 'recent' | 'visits' | 'points';
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  role: AuthAccountRole;
+  createdAt: string;
+  // Visitas = QR Codes lidos, desde o cadastro.
+  visits: number;
+  // Todos os pontos já ganhos, incluindo usados e expirados.
+  totalPoints: number;
+  // Pontos disponíveis hoje.
+  balance: number;
+  tier: TierLevel;
+}
+
+export interface PaginatedCustomers {
+  items: Customer[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CustomersFilter {
+  // Parte do nome ou do e-mail.
+  search?: string;
+  sort?: CustomerSort;
+  page?: number;
+}
 
 /** Chamadas do painel gerencial (somente super-admin). */
 export function useAdmin() {
@@ -229,6 +263,17 @@ export function useAdmin() {
     return url;
   }
 
+  /** Todas as contas, com visitas, pontos e nível. */
+  function getCustomers(filter: CustomersFilter): Promise<PaginatedCustomers> {
+    const query = Object.fromEntries(
+      Object.entries(filter).filter(([, value]) => value),
+    );
+    return $fetch<PaginatedCustomers>(
+      `${config.public.apiBaseUrl}/admin/customers`,
+      { headers: authHeaders(), query },
+    );
+  }
+
   return {
     getDailyPoints,
     getRates,
@@ -241,5 +286,6 @@ export function useAdmin() {
     createProduct,
     updateProduct,
     uploadProductImage,
+    getCustomers,
   };
 }

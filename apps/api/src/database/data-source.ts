@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import { EmailVerificationCode } from '../app/auth/entities/email-verification-code.entity';
 import { PasswordResetToken } from '../app/auth/entities/password-reset-token.entity';
 import { AppLog } from '../app/logs/entities/app-log.entity';
 import { PointsConversionRate } from '../app/points/entities/points-conversion-rate.entity';
@@ -32,6 +33,7 @@ export default new DataSource({
     RescuePoint,
     UserTier,
     PasswordResetToken,
+    EmailVerificationCode,
     AppLog,
     Product,
   ],

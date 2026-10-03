@@ -4,8 +4,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'node:crypto';
 import { DataSource, IsNull, MoreThan, Repository } from 'typeorm';
-import { MailService } from '../mail/mail.service';
+import { MailService, MailTemplate } from '../mail/mail.service';
 import { AuthProvider, User } from '../users/entities/user.entity';
+import { firstName } from '../users/first-name';
 import { UsersService } from '../users/users.service';
 import { BCRYPT_SALT_ROUNDS } from './auth.service';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
@@ -85,11 +86,9 @@ export class PasswordResetService {
 
   private async sendResetEmail(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
-    if (!user) return;
-
-    // Contas do Google/Apple não têm senha — só avisa como entrar.
-    if (user.provider !== AuthProvider.LOCAL) {
-      await this.mailService.send(buildSocialAccountEmail(user));
+    // Contas do Google/Apple não têm senha, e conta bloqueada não volta a
+    // entrar trocando a senha — nos dois casos nada é enviado.
+    if (!user || user.provider !== AuthProvider.LOCAL || user.blockedAt) {
       return;
     }
 
@@ -125,80 +124,18 @@ export class PasswordResetService {
       'WEB_APP_URL',
       'http://localhost:4200',
     );
-    const link = `${webAppUrl}/redefinir-senha?token=${token}`;
-    await this.mailService.send(buildResetEmail(user, link, ttlMinutes));
+    await this.mailService.sendTemplate({
+      to: { email: user.email, name: user.name },
+      template: MailTemplate.PASSWORD_RESET,
+      variables: {
+        firstName: firstName(user.name),
+        link: `${webAppUrl}/redefinir-senha?token=${token}`,
+        ttlMinutes,
+      },
+    });
   }
 }
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
-}
-
-function firstName(user: User): string {
-  return escapeHtml(user.name.split(' ')[0] ?? user.name);
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function emailLayout(body: string): string {
-  return `
-    <div style="background:#f2f0ef;padding:32px 16px;font-family:Arial,sans-serif;color:#28374a">
-      <div style="max-width:480px;margin:0 auto;background:#f8f6f5;border-radius:16px;padding:32px">
-        ${body}
-        <p style="margin:32px 0 0;font-size:13px;color:#5b6573">Dili Cafés Especiais</p>
-      </div>
-    </div>`;
-}
-
-function buildResetEmail(user: User, link: string, ttlMinutes: number) {
-  const name = firstName(user);
-  return {
-    to: user.email,
-    subject: 'Redefinir sua senha — Dili Rewards',
-    text:
-      `Olá, ${user.name.split(' ')[0]}!\n\n` +
-      `Recebemos um pedido para redefinir a senha da sua conta no Dili Rewards. ` +
-      `Para criar uma nova senha, acesse o link abaixo (válido por ${ttlMinutes} minutos):\n\n` +
-      `${link}\n\n` +
-      `Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.`,
-    html: emailLayout(`
-      <h1 style="margin:0 0 16px;font-size:20px">Olá, ${name}!</h1>
-      <p style="margin:0 0 24px;line-height:1.5">
-        Recebemos um pedido para redefinir a senha da sua conta no Dili Rewards.
-        O link abaixo vale por ${ttlMinutes} minutos.
-      </p>
-      <a href="${escapeHtml(link)}"
-         style="display:inline-block;background:#28374a;color:#f8f6f5;text-decoration:none;font-weight:bold;padding:14px 24px;border-radius:999px">
-        Criar nova senha
-      </a>
-      <p style="margin:24px 0 0;font-size:14px;line-height:1.5;color:#5b6573">
-        Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.
-      </p>`),
-  };
-}
-
-function buildSocialAccountEmail(user: User) {
-  const provider = user.provider === AuthProvider.GOOGLE ? 'Google' : 'Apple';
-  return {
-    to: user.email,
-    subject: 'Sobre o acesso à sua conta — Dili Rewards',
-    text:
-      `Olá, ${user.name.split(' ')[0]}!\n\n` +
-      `Recebemos um pedido para redefinir a senha da sua conta no Dili Rewards, ` +
-      `mas ela foi criada com o login do ${provider} e não tem senha. ` +
-      `Para entrar, use o botão "Continuar com ${provider}" na tela de login.`,
-    html: emailLayout(`
-      <h1 style="margin:0 0 16px;font-size:20px">Olá, ${firstName(user)}!</h1>
-      <p style="margin:0;line-height:1.5">
-        Recebemos um pedido para redefinir a senha da sua conta no Dili Rewards,
-        mas ela foi criada com o login do ${provider} e não tem senha.
-        Para entrar, use o botão <strong>Continuar com ${provider}</strong> na tela de login.
-      </p>`),
-  };
 }

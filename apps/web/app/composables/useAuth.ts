@@ -14,6 +14,8 @@ export interface AuthAccount {
   avatarUrl: string | null;
   provider: AuthAccountProvider;
   role: AuthAccountRole;
+  // false = conta pendente: só troca pontos depois de confirmar o e-mail.
+  emailVerified: boolean;
   // ISO 8601 — datas chegam como string no JSON.
   createdAt: string;
 }
@@ -91,6 +93,26 @@ export function useAuth() {
     return applyAuthResponse(await post('/auth/reset-password', input));
   }
 
+  /** Envia (ou reenvia) o código de confirmação para o e-mail da conta. */
+  async function sendEmailVerification(): Promise<void> {
+    await $fetch(`${config.public.apiBaseUrl}/auth/email-verification`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token.value}` },
+    });
+  }
+
+  async function confirmEmail(code: string): Promise<AuthAccount> {
+    account.value = await $fetch<AuthAccount>(
+      `${config.public.apiBaseUrl}/auth/email-verification/confirm`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token.value}` },
+        body: { code },
+      },
+    );
+    return account.value;
+  }
+
   function logout() {
     token.value = null;
     account.value = null;
@@ -138,6 +160,8 @@ export function useAuth() {
     loginWithApple,
     requestPasswordReset,
     resetPassword,
+    sendEmailVerification,
+    confirmEmail,
     logout,
     fetchCurrentUser,
   };

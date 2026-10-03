@@ -7,6 +7,8 @@ import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { EmailVerificationService } from './email-verification.service';
+import { EmailVerificationCode } from './entities/email-verification-code.entity';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { PasswordResetService } from './password-reset.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -16,7 +18,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     UsersModule,
     MailModule,
     PassportModule,
-    TypeOrmModule.forFeature([PasswordResetToken]),
+    TypeOrmModule.forFeature([PasswordResetToken, EmailVerificationCode]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -29,6 +31,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PasswordResetService, JwtStrategy],
+  providers: [
+    AuthService,
+    PasswordResetService,
+    EmailVerificationService,
+    JwtStrategy,
+  ],
 })
 export class AuthModule {}

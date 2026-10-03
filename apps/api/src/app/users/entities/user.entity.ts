@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -74,8 +76,35 @@ export class User {
   })
   avatarUrl!: string | null;
 
+  // Null = e-mail ainda não confirmado: a conta fica pendente e não pode
+  // trocar pontos. Contas do Google/Apple já nascem verificadas; as locais
+  // confirmam com o código enviado por e-mail.
   @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
   emailVerifiedAt!: Date | null;
+
+  // Bloqueio manual pelo super-admin (ex.: uso indevido dos QR Codes). Conta
+  // bloqueada não entra e perde as sessões abertas (ver JwtStrategy).
+  @Column({ name: 'blocked_at', type: 'timestamptz', nullable: true })
+  blockedAt!: Date | null;
+
+  @Column({
+    name: 'blocked_reason',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  blockedReason!: string | null;
+
+  // Super-admin que bloqueou (auditoria).
+  @Column({ name: 'blocked_by_id', type: 'uuid', nullable: true })
+  blockedById!: string | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'blocked_by_id',
+    foreignKeyConstraintName: 'FK_users_blocked_by_id',
+  })
+  blockedBy?: User | null;
 
   // Tokens de sessão emitidos antes desta data deixam de valer (ver
   // JwtStrategy). Null = senha nunca trocada.

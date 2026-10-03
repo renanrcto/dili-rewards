@@ -1,3 +1,7 @@
+import type {
+  AuthAccountProvider,
+  AuthAccountRole,
+} from '~/composables/useAuth';
 import type { StoreUnit } from '~/utils/store-units';
 
 export interface DailyPointsItem {
@@ -100,6 +104,37 @@ export type ProductInput = Omit<
   Product,
   'id' | 'createdAt' | 'updatedAt' | 'points' | 'partialPoints' | 'partialPrice'
 >;
+
+export type UserStatusFilter = 'pending' | 'blocked';
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  provider: AuthAccountProvider;
+  role: AuthAccountRole;
+  emailVerified: boolean;
+  // Preenchidos só em contas bloqueadas.
+  blockedAt: string | null;
+  blockedReason: string | null;
+  blockedByName: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedUsers {
+  items: AdminUser[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface UsersFilter {
+  // Parte do nome ou do e-mail.
+  search?: string;
+  status?: UserStatusFilter;
+  page?: number;
+}
 
 /** Chamadas do painel gerencial (somente super-admin). */
 export function useAdmin() {
@@ -229,6 +264,32 @@ export function useAdmin() {
     return url;
   }
 
+  /** Contas mais recentes primeiro. */
+  function getUsers(filter: UsersFilter): Promise<PaginatedUsers> {
+    const query = Object.fromEntries(
+      Object.entries(filter).filter(([, value]) => value),
+    );
+    return $fetch<PaginatedUsers>(`${config.public.apiBaseUrl}/admin/users`, {
+      headers: authHeaders(),
+      query,
+    });
+  }
+
+  /** Bloqueia a conta: ela não entra mais e perde as sessões abertas. */
+  function blockUser(id: string, reason: string): Promise<AdminUser> {
+    return $fetch<AdminUser>(
+      `${config.public.apiBaseUrl}/admin/users/${id}/block`,
+      { method: 'POST', headers: authHeaders(), body: { reason } },
+    );
+  }
+
+  function unblockUser(id: string): Promise<AdminUser> {
+    return $fetch<AdminUser>(
+      `${config.public.apiBaseUrl}/admin/users/${id}/unblock`,
+      { method: 'POST', headers: authHeaders() },
+    );
+  }
+
   return {
     getDailyPoints,
     getRates,
@@ -241,5 +302,8 @@ export function useAdmin() {
     createProduct,
     updateProduct,
     uploadProductImage,
+    getUsers,
+    blockUser,
+    unblockUser,
   };
 }

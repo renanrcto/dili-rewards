@@ -13,6 +13,10 @@ const TIER_LABELS: Record<TierLevel, string> = {
 const ALL_TIERS_COUNT = Object.keys(TIER_LABELS).length;
 
 const { getCatalog } = useCatalog();
+const { account } = useAuth();
+
+// Conta pendente: a troca só é liberada depois de confirmar o e-mail.
+const isPending = computed(() => account.value?.emailVerified === false);
 
 const {
   data: products,
@@ -65,6 +69,10 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
       <p class="store__notice">
         A troca chega em breve. Já dá para ver os produtos e quantos pontos cada
         um vale.
+      </p>
+      <p v-if="isPending" class="store__notice store__notice--pending">
+        Confirme seu e-mail na aba <strong>Perfil</strong> para poder trocar
+        seus pontos quando a troca chegar.
       </p>
     </header>
 
@@ -221,6 +229,10 @@ function exclusiveLabel(tiers: TierLevel[]): string | null {
     color: var(--color-ink);
     font-size: 0.9rem;
     line-height: 1.45;
+
+    &--pending {
+      background: var(--color-navy-soft);
+    }
   }
 
   &__filters {

@@ -11,11 +11,13 @@ import type { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
 import type { AuthResult, PublicUser } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ConfirmEmailDto } from './dto/confirm-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
+import { EmailVerificationService } from './email-verification.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PasswordResetService } from './password-reset.service';
 
@@ -24,6 +26,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {}
 
   @Post('register')
@@ -67,6 +70,28 @@ export class AuthController {
   // loginWithApple(@Body() dto: SocialLoginDto): Promise<AuthResult> {
   //   return this.authService.loginWithApple(dto.idToken);
   // }
+
+  // Envia (ou reenvia) o código de confirmação para o e-mail da conta.
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('email-verification')
+  async sendEmailVerification(@CurrentUser() user: User): Promise<void> {
+    await this.emailVerificationService.sendCode(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('email-verification/confirm')
+  async confirmEmail(
+    @CurrentUser() user: User,
+    @Body() dto: ConfirmEmailDto,
+  ): Promise<PublicUser> {
+    const confirmed = await this.emailVerificationService.confirm(
+      user,
+      dto.code,
+    );
+    return this.authService.toPublicUser(confirmed);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')

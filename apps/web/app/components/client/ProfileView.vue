@@ -116,6 +116,8 @@ async function handleLogout() {
       </div>
     </dl>
 
+    <ClientEmailVerificationCard v-if="account?.emailVerified === false" />
+
     <section v-if="isTierLoading" class="profile__tier" aria-busy="true">
       <div class="profile__tier-header">
         <h2 class="profile__label">Seu nível</h2>

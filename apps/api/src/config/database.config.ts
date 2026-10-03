@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { EmailVerificationCode } from '../app/auth/entities/email-verification-code.entity';
 import { PasswordResetToken } from '../app/auth/entities/password-reset-token.entity';
 import { AppLog } from '../app/logs/entities/app-log.entity';
 import { PointsConversionRate } from '../app/points/entities/points-conversion-rate.entity';
@@ -26,6 +27,7 @@ export function buildDatabaseConfig(
       RescuePoint,
       UserTier,
       PasswordResetToken,
+      EmailVerificationCode,
       AppLog,
       Product,
     ],

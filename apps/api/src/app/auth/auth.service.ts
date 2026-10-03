@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,11 +14,14 @@ import { AuthProvider, User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { EmailVerificationService } from './email-verification.service';
 import { JwtPayload } from './types/jwt-payload.interface';
 
 export const BCRYPT_SALT_ROUNDS = 12;
 const APPLE_ISSUER = 'https://appleid.apple.com';
 const APPLE_JWKS_URI = 'https://appleid.apple.com/auth/keys';
+export const BLOCKED_ACCOUNT_MESSAGE =
+  'Sua conta está bloqueada. Fale com a equipe da Dili para saber mais.';
 
 export interface PublicUser {
   id: string;
@@ -26,6 +30,8 @@ export interface PublicUser {
   avatarUrl: string | null;
   provider: AuthProvider;
   role: UserRole;
+  // false = conta pendente: não pode trocar pontos até confirmar o e-mail.
+  emailVerified: boolean;
   createdAt: Date;
 }
 
@@ -43,6 +49,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get<string>('GOOGLE_CLIENT_ID'),
@@ -61,6 +68,7 @@ export class AuthService {
       email: dto.email,
       passwordHash,
     });
+    this.emailVerificationService.sendCodeInBackground(user);
 
     return this.buildAuthResult(user);
   }
@@ -106,7 +114,6 @@ export class AuthService {
       email: payload.email,
       name: payload.name ?? payload.email,
       avatarUrl: payload.picture ?? null,
-      emailVerified: payload.email_verified ?? false,
     });
 
     return this.buildAuthResult(user);
@@ -154,8 +161,6 @@ export class AuthService {
       // fallback simples usamos o e-mail.
       name: email,
       avatarUrl: null,
-      emailVerified:
-        payload.email_verified === true || payload.email_verified === 'true',
     });
 
     return this.buildAuthResult(user);
@@ -167,7 +172,6 @@ export class AuthService {
     email: string;
     name: string;
     avatarUrl: string | null;
-    emailVerified: boolean;
   }): Promise<User> {
     const existingByProvider = await this.usersService.findByProviderId(
       input.provider,
@@ -190,11 +194,15 @@ export class AuthService {
       provider: input.provider,
       providerId: input.providerId,
       avatarUrl: input.avatarUrl,
-      emailVerified: input.emailVerified,
     });
   }
 
+  // Ponto único de emissão de sessão (cadastro, login, Google, redefinição
+  // de senha) — conta bloqueada não recebe token.
   buildAuthResult(user: User): AuthResult {
+    if (user.blockedAt) {
+      throw new ForbiddenException(BLOCKED_ACCOUNT_MESSAGE);
+    }
     const payload: JwtPayload = { sub: user.id, email: user.email };
     return {
       accessToken: this.jwtService.sign(payload),
@@ -210,6 +218,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       provider: user.provider,
       role: user.role,
+      emailVerified: !!user.emailVerifiedAt,
       createdAt: user.createdAt,
     };
   }

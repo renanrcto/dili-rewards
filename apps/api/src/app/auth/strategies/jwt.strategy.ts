@@ -1,8 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from '../../users/users.service';
+import { BLOCKED_ACCOUNT_MESSAGE } from '../auth.service';
 import { JwtPayload } from '../types/jwt-payload.interface';
 
 @Injectable()
@@ -31,6 +36,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
     ) {
       throw new UnauthorizedException();
+    }
+    // Bloquear a conta encerra as sessões abertas já na próxima requisição.
+    if (user.blockedAt) {
+      throw new ForbiddenException(BLOCKED_ACCOUNT_MESSAGE);
     }
     return user;
   }

@@ -41,7 +41,7 @@ interface Activity {
 
 // Janela móvel da regra de visitas/pontos e por quanto tempo a subida de
 // nível fica garantida (intervalos do Postgres).
-const ACTIVITY_WINDOW = '2 months';
+export const ACTIVITY_WINDOW = '2 months';
 const TIER_LOCK = '3 months';
 
 // Basta cumprir um dos critérios (visitas OU pontos) para subir de nível.
@@ -83,11 +83,29 @@ function nextTierProgress(
   };
 }
 
-function tierFor({ visits, points }: Pick<Activity, 'visits' | 'points'>) {
+export function tierFor({
+  visits,
+  points,
+}: Pick<Activity, 'visits' | 'points'>): TierLevel {
   const rule = TIER_RULES.find(
     (r) => visits >= r.minVisits || points >= r.minPoints,
   );
   return rule?.tier ?? 'standard';
+}
+
+/**
+ * Nível vigente: o maior entre a atividade da janela e a melhor garantia
+ * ainda válida. Mesma regra do getStatus, para quem já tem os números (ex.:
+ * a lista de clientes, que calcula tudo numa consulta só).
+ */
+export function currentTier(
+  activity: Pick<Activity, 'visits' | 'points'>,
+  grantedTier: GrantedTier | null,
+): TierLevel {
+  const activityTier = tierFor(activity);
+  return grantedTier && TIER_RANK[grantedTier] >= TIER_RANK[activityTier]
+    ? grantedTier
+    : activityTier;
 }
 
 @Injectable()
